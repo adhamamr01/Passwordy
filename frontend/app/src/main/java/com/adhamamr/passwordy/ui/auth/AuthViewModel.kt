@@ -4,55 +4,45 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.adhamamr.passwordy.data.local.TokenManager
+import com.adhamamr.passwordy.data.model.AuthResponse
 import com.adhamamr.passwordy.data.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import retrofit2.Response
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = AuthRepository()
     private val tokenManager = TokenManager(application)
 
-    // UI State
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Initial)
     val uiState: StateFlow<AuthUiState> = _uiState
 
     fun register(username: String, email: String, masterPassword: String) {
-        viewModelScope.launch {
-            _uiState.value = AuthUiState.Loading
-
-            try {
-                val response = repository.register(username, email, masterPassword)
-
-                if (response.isSuccessful && response.body() != null) {
-                    val authResponse = response.body()!!
-                    tokenManager.saveToken(authResponse.token)
-                    tokenManager.saveUsername(authResponse.username)
-                    _uiState.value = AuthUiState.Success(authResponse.message)
-                } else {
-                    _uiState.value = AuthUiState.Error(response.message() ?: "Registration failed")
-                }
-            } catch (e: Exception) {
-                _uiState.value = AuthUiState.Error(e.message ?: "Network error")
-            }
+        authenticate(errorFallback = "Registration failed") {
+            repository.register(username, email, masterPassword)
         }
     }
 
     fun login(username: String, masterPassword: String) {
+        authenticate(errorFallback = "Login failed") {
+            repository.login(username, masterPassword)
+        }
+    }
+
+    private fun authenticate(errorFallback: String, action: suspend () -> Response<AuthResponse>) {
         viewModelScope.launch {
             _uiState.value = AuthUiState.Loading
-
             try {
-                val response = repository.login(username, masterPassword)
-
+                val response = action()
                 if (response.isSuccessful && response.body() != null) {
-                    val authResponse = response.body()!!
-                    tokenManager.saveToken(authResponse.token)
-                    tokenManager.saveUsername(authResponse.username)
-                    _uiState.value = AuthUiState.Success(authResponse.message)
+                    val body = response.body()!!
+                    tokenManager.saveToken(body.token)
+                    tokenManager.saveUsername(body.username)
+                    _uiState.value = AuthUiState.Success(body.message)
                 } else {
-                    _uiState.value = AuthUiState.Error(response.message() ?: "Login failed")
+                    _uiState.value = AuthUiState.Error(response.message() ?: errorFallback)
                 }
             } catch (e: Exception) {
                 _uiState.value = AuthUiState.Error(e.message ?: "Network error")
@@ -65,7 +55,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     }
 }
 
-// UI State sealed class
 sealed class AuthUiState {
     object Initial : AuthUiState()
     object Loading : AuthUiState()

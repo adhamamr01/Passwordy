@@ -84,8 +84,7 @@ class PasswordViewModel(
         viewModelScope.launch {
             _uiState.value = PasswordUiState.Loading
             try {
-                val passwords = repository.getAllPasswords()
-                _uiState.value = PasswordUiState.Success(passwords)
+                _uiState.value = PasswordUiState.Success(repository.getAllPasswords())
             } catch (e: Exception) {
                 _uiState.value = PasswordUiState.Error(e.message ?: "Failed to load passwords")
             }
@@ -96,8 +95,7 @@ class PasswordViewModel(
         viewModelScope.launch {
             _detailState.value = PasswordDetailState.Loading
             try {
-                val password = repository.getPasswordById(id)
-                _detailState.value = PasswordDetailState.Success(password)
+                _detailState.value = PasswordDetailState.Success(repository.getPasswordById(id))
             } catch (e: Exception) {
                 _detailState.value = PasswordDetailState.Error(e.message ?: "Failed to load password")
             }
@@ -108,8 +106,7 @@ class PasswordViewModel(
         viewModelScope.launch {
             _decryptState.value = DecryptState.Loading
             try {
-                val decrypted = repository.decryptPassword(id)
-                _decryptState.value = DecryptState.Success(decrypted)
+                _decryptState.value = DecryptState.Success(repository.decryptPassword(id))
             } catch (e: Exception) {
                 _decryptState.value = DecryptState.Error(e.message ?: "Failed to decrypt password")
             }
@@ -120,8 +117,7 @@ class PasswordViewModel(
         viewModelScope.launch {
             _generateState.value = GenerateState.Loading
             try {
-                val request = PasswordGenerationRequest(length, includeSymbols)
-                val response = repository.generatePassword(request)
+                val response = repository.generatePassword(PasswordGenerationRequest(length, includeSymbols))
                 _generateState.value = GenerateState.PasswordSuccess(response.password)
             } catch (e: Exception) {
                 _generateState.value = GenerateState.Error(e.message ?: "Failed to generate password")
@@ -133,8 +129,7 @@ class PasswordViewModel(
         viewModelScope.launch {
             _generateState.value = GenerateState.Loading
             try {
-                val request = PinGenerationRequest(length)
-                val response = repository.generatePin(request)
+                val response = repository.generatePin(PinGenerationRequest(length))
                 _generateState.value = GenerateState.PinSuccess(response.pin)
             } catch (e: Exception) {
                 _generateState.value = GenerateState.Error(e.message ?: "Failed to generate PIN")
@@ -142,60 +137,19 @@ class PasswordViewModel(
         }
     }
 
-    fun savePassword(
-        label: String,
-        username: String,
-        password: String,
-        url: String?,
-        notes: String?,
-        category: String
-    ) {
-        viewModelScope.launch {
-            _saveState.value = SaveState.Loading
-            try {
-                val request = PasswordRequest(
-                    label = label,
-                    username = username,
-                    password = password,
-                    url = url,
-                    notes = notes,
-                    category = category
-                )
-                repository.savePassword(request)
-                _saveState.value = SaveState.Success
-                loadPasswords() // Refresh the list
-            } catch (e: Exception) {
-                _saveState.value = SaveState.Error(e.message ?: "Failed to save password")
-            }
+    fun savePassword(label: String, username: String, password: String, url: String?, notes: String?, category: String) {
+        persistPassword(errorMsg = "Failed to save password") {
+            val saved = repository.savePassword(PasswordRequest(label, username, password, url, notes, category))
+            val current = (_uiState.value as? PasswordUiState.Success)?.passwords ?: emptyList()
+            _uiState.value = PasswordUiState.Success(current + saved)
         }
     }
 
-    fun updatePassword(
-        id: Long,
-        label: String,
-        username: String,
-        password: String,
-        url: String?,
-        notes: String?,
-        category: String
-    ) {
-        viewModelScope.launch {
-            _saveState.value = SaveState.Loading
-            try {
-                val request = PasswordRequest(
-                    label = label,
-                    username = username,
-                    password = password,
-                    url = url,
-                    notes = notes,
-                    category = category
-                )
-                repository.updatePassword(id, request)
-                _saveState.value = SaveState.Success
-                loadPasswords() // Refresh the list
-            } catch (e: Exception) {
-                _saveState.value = SaveState.Error(e.message ?: "Failed to update password")
-            }
+    fun updatePassword(id: Long, label: String, username: String, password: String, url: String?, notes: String?, category: String) {
+        persistPassword(errorMsg = "Failed to update password") {
+            val updated = repository.updatePassword(id, PasswordRequest(label, username, password, url, notes, category))
+            val current = (_uiState.value as? PasswordUiState.Success)?.passwords ?: emptyList()
+            _uiState.value = PasswordUiState.Success(current.map { if (it.id == id) updated else it })
         }
     }
 
@@ -205,9 +159,22 @@ class PasswordViewModel(
             try {
                 repository.deletePassword(id)
                 _deleteState.value = DeleteState.Success
-                loadPasswords() // Refresh the list
+                val current = (_uiState.value as? PasswordUiState.Success)?.passwords ?: emptyList()
+                _uiState.value = PasswordUiState.Success(current.filterNot { it.id == id })
             } catch (e: Exception) {
                 _deleteState.value = DeleteState.Error(e.message ?: "Failed to delete password")
+            }
+        }
+    }
+
+    private fun persistPassword(errorMsg: String, action: suspend () -> Unit) {
+        viewModelScope.launch {
+            _saveState.value = SaveState.Loading
+            try {
+                action()
+                _saveState.value = SaveState.Success
+            } catch (e: Exception) {
+                _saveState.value = SaveState.Error(e.message ?: errorMsg)
             }
         }
     }
@@ -215,32 +182,16 @@ class PasswordViewModel(
     private fun loadCategories() {
         viewModelScope.launch {
             try {
-                val categoryList = repository.getCategories()
-                _categories.value = categoryList
+                _categories.value = repository.getCategories()
             } catch (e: Exception) {
-                // Fallback to default categories if API fails
                 _categories.value = listOf("Social", "Work", "Finance", "Shopping", "Other")
             }
         }
     }
 
-    fun resetDecryptState() {
-        _decryptState.value = DecryptState.Idle
-    }
-
-    fun resetGenerateState() {
-        _generateState.value = GenerateState.Idle
-    }
-
-    fun resetSaveState() {
-        _saveState.value = SaveState.Idle
-    }
-
-    fun resetDeleteState() {
-        _deleteState.value = DeleteState.Idle
-    }
-
-    fun resetDetailState() {
-        _detailState.value = PasswordDetailState.Idle
-    }
+    fun resetDecryptState() { _decryptState.value = DecryptState.Idle }
+    fun resetGenerateState() { _generateState.value = GenerateState.Idle }
+    fun resetSaveState() { _saveState.value = SaveState.Idle }
+    fun resetDeleteState() { _deleteState.value = DeleteState.Idle }
+    fun resetDetailState() { _detailState.value = PasswordDetailState.Idle }
 }

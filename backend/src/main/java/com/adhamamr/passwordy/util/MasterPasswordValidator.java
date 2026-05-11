@@ -2,10 +2,15 @@ package com.adhamamr.passwordy.util;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class MasterPasswordValidator {
 
     private static final int MIN_LENGTH = 8;
+    private static final Pattern HAS_UPPER   = Pattern.compile("[A-Z]");
+    private static final Pattern HAS_LOWER   = Pattern.compile("[a-z]");
+    private static final Pattern HAS_DIGIT   = Pattern.compile("\\d");
+    private static final Pattern HAS_SPECIAL = Pattern.compile("[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]");
 
     public static ValidationResult validate(String password) {
         List<String> errors = new ArrayList<>();
@@ -18,20 +23,16 @@ public class MasterPasswordValidator {
         if (password.length() < MIN_LENGTH) {
             errors.add("Password must be at least " + MIN_LENGTH + " characters long");
         }
-
-        if (!password.matches(".*[A-Z].*")) {
+        if (!HAS_UPPER.matcher(password).find()) {
             errors.add("Password must contain at least one uppercase letter");
         }
-
-        if (!password.matches(".*[a-z].*")) {
+        if (!HAS_LOWER.matcher(password).find()) {
             errors.add("Password must contain at least one lowercase letter");
         }
-
-        if (!password.matches(".*\\d.*")) {
+        if (!HAS_DIGIT.matcher(password).find()) {
             errors.add("Password must contain at least one number");
         }
-
-        if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*")) {
+        if (!HAS_SPECIAL.matcher(password).find()) {
             errors.add("Password must contain at least one special character");
         }
 
@@ -47,16 +48,8 @@ public class MasterPasswordValidator {
             this.errors = errors;
         }
 
-        public boolean isValid() {
-            return isValid;
-        }
-
-        public List<String> getErrors() {
-            return errors;
-        }
-
-        public String getErrorMessage() {
-            return String.join(", ", errors);
-        }
+        public boolean isValid() { return isValid; }
+        public List<String> getErrors() { return errors; }
+        public String getErrorMessage() { return String.join(", ", errors); }
     }
 }

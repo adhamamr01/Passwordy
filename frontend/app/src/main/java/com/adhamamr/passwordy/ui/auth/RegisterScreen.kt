@@ -126,7 +126,8 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Confirm password field
+            val passwordMismatch = password.isNotEmpty() && confirmPassword.isNotEmpty() && password != confirmPassword
+
             OutlinedTextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
@@ -151,12 +152,12 @@ fun RegisterScreen(
                         )
                     }
                 },
-                isError = password.isNotEmpty() && confirmPassword.isNotEmpty() && password != confirmPassword,
+                isError = passwordMismatch,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = uiState !is AuthUiState.Loading
             )
 
-            if (password.isNotEmpty() && confirmPassword.isNotEmpty() && password != confirmPassword) {
+            if (passwordMismatch) {
                 Text(
                     text = "Passwords don't match",
                     color = MaterialTheme.colorScheme.error,
@@ -167,22 +168,12 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Register button
+            val isFormValid = username.isNotBlank() && email.isNotBlank() && password.isNotBlank() && !passwordMismatch && confirmPassword.isNotBlank()
+
             Button(
-                onClick = {
-                    if (username.isNotBlank() &&
-                        email.isNotBlank() &&
-                        password.isNotBlank() &&
-                        password == confirmPassword) {
-                        viewModel.register(username, email, password)
-                    }
-                },
+                onClick = { if (isFormValid) viewModel.register(username, email, password) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = uiState !is AuthUiState.Loading &&
-                        username.isNotBlank() &&
-                        email.isNotBlank() &&
-                        password.isNotBlank() &&
-                        password == confirmPassword
+                enabled = uiState !is AuthUiState.Loading && isFormValid
             ) {
                 if (uiState is AuthUiState.Loading) {
                     CircularProgressIndicator(

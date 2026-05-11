@@ -4,6 +4,8 @@ import com.adhamamr.passwordy.dto.PasswordSaveRequest;
 import com.adhamamr.passwordy.dto.PasswordResponse;
 import com.adhamamr.passwordy.model.Password;
 import com.adhamamr.passwordy.model.User;
+import com.adhamamr.passwordy.exception.ResourceNotFoundException;
+import com.adhamamr.passwordy.exception.UnauthorizedException;
 import com.adhamamr.passwordy.repository.PasswordRepository;
 import com.adhamamr.passwordy.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -24,40 +26,33 @@ public class PasswordServiceImpl implements PasswordService {
 
     private final PasswordRepository passwordRepository;
     private final UserRepository userRepository;
-    private final EncryptionService encryptionService;  // NEW
+    private final EncryptionService encryptionService;
 
     public PasswordServiceImpl(PasswordRepository passwordRepository,
                                UserRepository userRepository,
-                               EncryptionService encryptionService) {  // NEW
+                               EncryptionService encryptionService) {
         this.passwordRepository = passwordRepository;
         this.userRepository = userRepository;
-        this.encryptionService = encryptionService;  // NEW
+        this.encryptionService = encryptionService;
     }
 
     @Override
     public String generatePassword(int length, boolean includeSymbols) {
-        // Validate minimum length
         if (length < 8) {
             throw new IllegalArgumentException("Password length must be at least 8 characters");
         }
 
-        StringBuilder chars = new StringBuilder();
-        chars.append(UPPERCASE);
-        chars.append(LOWERCASE);
-        chars.append(NUMBERS);
-
+        StringBuilder chars = new StringBuilder(UPPERCASE + LOWERCASE + NUMBERS);
         StringBuilder password = new StringBuilder();
 
         password.append(UPPERCASE.charAt(random.nextInt(UPPERCASE.length())));
         password.append(LOWERCASE.charAt(random.nextInt(LOWERCASE.length())));
         password.append(NUMBERS.charAt(random.nextInt(NUMBERS.length())));
 
-
         if (includeSymbols) {
             chars.append(SYMBOLS);
             password.append(SYMBOLS.charAt(random.nextInt(SYMBOLS.length())));
         }
-
 
         for (int i = password.length(); i < length; i++) {
             password.append(chars.charAt(random.nextInt(chars.length())));
@@ -80,98 +75,100 @@ public class PasswordServiceImpl implements PasswordService {
     @Override
     public PasswordResponse savePassword(PasswordSaveRequest request, String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Password password = new Password();
         password.setLabel(request.getLabel());
-
-        // ENCRYPT password before saving
-        try {
-            String encryptedPassword = encryptionService.encrypt(request.getPassword());
-            password.setValue(encryptedPassword);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to encrypt password", e);
-        }
-
+        password.setValue(encryptSafe(request.getPassword()));
         password.setUsername(request.getUsername());
         password.setUrl(request.getUrl());
         password.setNotes(request.getNotes());
         password.setCategory(request.getCategory());
         password.setUser(user);
 
-        Password saved = passwordRepository.save(password);
-        return toResponse(saved);
+        return toResponse(passwordRepository.save(password));
     }
 
     @Override
     public List<PasswordResponse> getAllPasswords(String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        return passwordRepository.findAll().stream()
-                .filter(p -> p.getUser().getId().equals(user.getId()))
+        return passwordRepository.findByUserUsername(username).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     public PasswordResponse getPasswordById(Long id, String username) {
-        Password password = passwordRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Password not found with id: " + id));
-
-        if (!password.getUser().getUsername().equals(username)) {
-            throw new RuntimeException("Unauthorized access to password");
-        }
-
-        return toResponse(password);
+        return toResponse(findOwnedPassword(id, username));
     }
 
     @Override
     public PasswordResponse updatePassword(Long id, PasswordSaveRequest request, String username) {
-        Password password = passwordRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Password not found with id: " + id));
-
-        if (!password.getUser().getUsername().equals(username)) {
-            throw new RuntimeException("Unauthorized access to password");
-        }
+        Password password = findOwnedPassword(id, username);
 
         password.setLabel(request.getLabel());
-
-        // ENCRYPT password before updating
-        try {
-            String encryptedPassword = encryptionService.encrypt(request.getPassword());
-            password.setValue(encryptedPassword);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to encrypt password", e);
-        }
-
+        password.setValue(encryptSafe(request.getPassword()));
         password.setUsername(request.getUsername());
         password.setUrl(request.getUrl());
         password.setNotes(request.getNotes());
         password.setCategory(request.getCategory());
 
-        Password updated = passwordRepository.save(password);
-        return toResponse(updated);
+        return toResponse(passwordRepository.save(password));
     }
 
     @Override
     public void deletePassword(Long id, String username) {
-        Password password = passwordRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Password not found with id: " + id));
-
-        if (!password.getUser().getUsername().equals(username)) {
-            throw new RuntimeException("Unauthorized access to password");
-        }
-
+        findOwnedPassword(id, username);
         passwordRepository.deleteById(id);
     }
 
+    @Override
+    public String decryptPassword(Long id, String username) {
+        Password password = findOwnedPassword(id, username);
+        try {
+            return encryptionService.decrypt(password.getValue());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to decrypt password", e);
+        }
+    }
+
+    @Override
+    public String generatePin(int length) {
+        if (length < 4) {
+            throw new IllegalArgumentException("PIN length must be at least 4 digits");
+        }
+        if (length > 12) {
+            throw new IllegalArgumentException("PIN length cannot exceed 12 digits");
+        }
+
+        StringBuilder pin = new StringBuilder();
+        for (int i = 0; i < length; i++) {
+            pin.append(NUMBERS.charAt(random.nextInt(NUMBERS.length())));
+        }
+        return pin.toString();
+    }
+
+    private Password findOwnedPassword(Long id, String username) {
+        Password password = passwordRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Password not found with id: " + id));
+        if (!password.getUser().getUsername().equals(username)) {
+            throw new UnauthorizedException("Unauthorized access to password");
+        }
+        return password;
+    }
+
+    private String encryptSafe(String plainText) {
+        try {
+            return encryptionService.encrypt(plainText);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to encrypt password", e);
+        }
+    }
+
     private PasswordResponse toResponse(Password password) {
-        // Return encrypted password (don't decrypt in list view for security)
         return new PasswordResponse(
                 password.getId(),
                 password.getLabel(),
-                password.getValue(),  // Still encrypted
+                password.getValue(),
                 password.getUsername(),
                 password.getUrl(),
                 password.getNotes(),
@@ -179,24 +176,5 @@ public class PasswordServiceImpl implements PasswordService {
                 password.getCreatedAt(),
                 password.getUpdatedAt()
         );
-    }
-    @Override
-    public String generatePin(int length) {
-        // Validate minimum length
-        if (length < 4) {
-            throw new IllegalArgumentException("PIN length must be at least 4 digits");
-        }
-
-        if (length > 12) {
-            throw new IllegalArgumentException("PIN length cannot exceed 12 digits");
-        }
-
-        StringBuilder pin = new StringBuilder();
-
-        for (int i = 0; i < length; i++) {
-            pin.append(NUMBERS.charAt(random.nextInt(NUMBERS.length())));
-        }
-
-        return pin.toString();
     }
 }

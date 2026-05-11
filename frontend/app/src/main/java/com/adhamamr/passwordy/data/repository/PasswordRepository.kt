@@ -4,101 +4,58 @@ import com.adhamamr.passwordy.data.local.TokenManager
 import com.adhamamr.passwordy.data.model.*
 import com.adhamamr.passwordy.data.network.ApiService
 import kotlinx.coroutines.flow.first
+import retrofit2.Response
 
 class PasswordRepository(
     private val apiService: ApiService,
     private val tokenManager: TokenManager
 ) {
 
-    private suspend fun getAuthToken(): String {
-        return tokenManager.token.first() ?: throw Exception("No authentication token found")
+    private var cachedToken: String? = null
+
+    private suspend fun bearerToken(): String {
+        val token = cachedToken ?: tokenManager.token.first()?.also { cachedToken = it }
+            ?: throw Exception("No authentication token found")
+        return "Bearer $token"
     }
 
-    suspend fun getAllPasswords(): List<PasswordResponse> {
-        val token = getAuthToken()
-        val response = apiService.getAllPasswords("Bearer $token")
-        if (response.isSuccessful && response.body() != null) {
-            return response.body()!!
-        } else {
-            throw Exception("Failed to fetch passwords: ${response.message()}")
-        }
+    fun clearTokenCache() {
+        cachedToken = null
     }
 
-    suspend fun getPasswordById(id: Long): PasswordResponse {
-        val token = getAuthToken()
-        val response = apiService.getPasswordById("Bearer $token", id)
-        if (response.isSuccessful && response.body() != null) {
-            return response.body()!!
-        } else {
-            throw Exception("Failed to fetch password: ${response.message()}")
-        }
-    }
+    suspend fun getAllPasswords(): List<PasswordResponse> =
+        apiService.getAllPasswords(bearerToken()).unwrap("fetch passwords")
 
-    suspend fun savePassword(request: PasswordRequest): PasswordResponse {
-        val token = getAuthToken()
-        val response = apiService.savePassword("Bearer $token", request)
-        if (response.isSuccessful && response.body() != null) {
-            return response.body()!!
-        } else {
-            throw Exception("Failed to save password: ${response.message()}")
-        }
-    }
+    suspend fun getPasswordById(id: Long): PasswordResponse =
+        apiService.getPasswordById(bearerToken(), id).unwrap("fetch password")
 
-    suspend fun updatePassword(id: Long, request: PasswordRequest): PasswordResponse {
-        val token = getAuthToken()
-        val response = apiService.updatePassword("Bearer $token", id, request)
-        if (response.isSuccessful && response.body() != null) {
-            return response.body()!!
-        } else {
-            throw Exception("Failed to update password: ${response.message()}")
-        }
-    }
+    suspend fun savePassword(request: PasswordRequest): PasswordResponse =
+        apiService.savePassword(bearerToken(), request).unwrap("save password")
+
+    suspend fun updatePassword(id: Long, request: PasswordRequest): PasswordResponse =
+        apiService.updatePassword(bearerToken(), id, request).unwrap("update password")
 
     suspend fun deletePassword(id: Long) {
-        val token = getAuthToken()
-        val response = apiService.deletePassword("Bearer $token", id)
-        if (!response.isSuccessful) {
-            throw Exception("Failed to delete password: ${response.message()}")
-        }
+        val response = apiService.deletePassword(bearerToken(), id)
+        if (!response.isSuccessful) throw Exception("Failed to delete password: ${response.message()}")
     }
 
     suspend fun decryptPassword(id: Long): String {
-        val token = getAuthToken()
-        val response = apiService.decryptPassword("Bearer $token", id)
-        if (response.isSuccessful && response.body() != null) {
-            val body = response.body()!!
-            // Backend returns "password" key with the decrypted password
-            return body["password"]
-                ?: throw Exception("Password key not found in decrypt response")
-        } else {
-            throw Exception("Failed to decrypt password: ${response.message()}")
-        }
+        val body = apiService.decryptPassword(bearerToken(), id).unwrap("decrypt password")
+        return body["password"] ?: throw Exception("Password key not found in decrypt response")
     }
 
-    suspend fun generatePassword(request: PasswordGenerationRequest): GeneratedPasswordResponse {
-        val response = apiService.generatePassword(request)
-        if (response.isSuccessful && response.body() != null) {
-            return response.body()!!
-        } else {
-            throw Exception("Failed to generate password: ${response.message()}")
-        }
-    }
+    suspend fun generatePassword(request: PasswordGenerationRequest): GeneratedPasswordResponse =
+        apiService.generatePassword(request).unwrap("generate password")
 
-    suspend fun generatePin(request: PinGenerationRequest): GeneratedPinResponse {
-        val response = apiService.generatePin(request)
-        if (response.isSuccessful && response.body() != null) {
-            return response.body()!!
-        } else {
-            throw Exception("Failed to generate PIN: ${response.message()}")
-        }
-    }
+    suspend fun generatePin(request: PinGenerationRequest): GeneratedPinResponse =
+        apiService.generatePin(request).unwrap("generate PIN")
 
-    suspend fun getCategories(): List<String> {
-        val response = apiService.getCategories()
-        if (response.isSuccessful && response.body() != null) {
-            return response.body()!!
-        } else {
-            throw Exception("Failed to fetch categories: ${response.message()}")
-        }
-    }
+    suspend fun getCategories(): List<String> =
+        apiService.getCategories().unwrap("fetch categories")
+}
+
+private fun <T> Response<T>.unwrap(action: String): T {
+    if (isSuccessful && body() != null) return body()!!
+    throw Exception("Failed to $action: ${message()}")
 }

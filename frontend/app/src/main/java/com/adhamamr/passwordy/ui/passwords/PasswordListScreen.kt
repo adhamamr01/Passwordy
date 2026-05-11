@@ -41,12 +41,6 @@ fun PasswordListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
 
-    // Reload passwords whenever the screen comes back into view
-    DisposableEffect(Unit) {
-        viewModel.loadPasswords()
-        onDispose { }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(

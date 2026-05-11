@@ -200,12 +200,13 @@ fun AddEditPasswordScreen(
                 maxLines = 5
             )
 
+            val isFormValid = label.isNotBlank() && username.isNotBlank() && password.isNotBlank() && selectedCategory.isNotBlank()
+
             // Save button
             Button(
                 onClick = {
-                    if (label.isNotBlank() && username.isNotBlank() && password.isNotBlank() && selectedCategory.isNotBlank()) {
+                    if (isFormValid) {
                         if (passwordId == null) {
-                            // Add new password
                             viewModel.savePassword(
                                 label = label,
                                 username = username,
@@ -215,7 +216,6 @@ fun AddEditPasswordScreen(
                                 category = selectedCategory
                             )
                         } else {
-                            // Update existing password
                             viewModel.updatePassword(
                                 id = passwordId,
                                 label = label,
@@ -229,11 +229,7 @@ fun AddEditPasswordScreen(
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = saveState !is SaveState.Loading &&
-                        label.isNotBlank() &&
-                        username.isNotBlank() &&
-                        password.isNotBlank() &&
-                        selectedCategory.isNotBlank()
+                enabled = saveState !is SaveState.Loading && isFormValid
             ) {
                 if (saveState is SaveState.Loading) {
                     CircularProgressIndicator(
