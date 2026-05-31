@@ -25,9 +25,9 @@ Tokens are returned by register/login and are valid for **24 hours**.
 | **Public** (no token) | `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/password/generate`, `POST /api/password/generate-pin` |
 | **Authenticated** | everything else, including `GET /api/password/categories` and all `/api/passwords` routes |
 
-> Note: `GET /api/password/categories` requires a token (it does not match the public
-> `/api/password/generate**` rule). The Android client calls it without one and silently
-> falls back to a built-in category list if the call is rejected.
+> Note: only the two explicit generation routes are public; `GET /api/password/categories`
+> requires a token. The Android client sends its bearer token on this call (and keeps a
+> built-in category list as a fallback if the request fails).
 
 ---
 

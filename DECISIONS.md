@@ -58,9 +58,11 @@ run behind any number of instances without sticky sessions. The token *is* the s
 natural expiry without adding a denylist. Given the 24h lifetime this is acceptable for
 now; a refresh-token + denylist scheme is the documented upgrade path.
 
-**Public routes:** `/api/auth/**` and `/api/password/generate**` are permitted without a
-token (generation is a pure utility and needs no identity); everything else requires
-authentication.
+**Public routes:** `/api/auth/**` plus the two explicit generation routes
+(`/api/password/generate` and `/api/password/generate-pin`) are permitted without a token
+(generation is a pure utility and needs no identity); everything else — including
+`/api/password/categories` — requires authentication. The generation routes are listed
+explicitly rather than via a `generate*` wildcard so no unintended path is left open.
 
 ---
 
@@ -197,10 +199,17 @@ changed to the host's LAN IP.
 
 ## 10. Persistence profiles
 
-- **Default (`application.properties`):** in-memory **H2** with the H2 console enabled —
-  zero-setup for development and tests; data is wiped on restart.
-- **`local` / `docker` profiles:** **PostgreSQL**, configured through the gitignored
-  secret files (see `SETUP.md`).
+- **Default (`application.properties`):** in-memory **H2** — zero-setup, used for a quick
+  start and for the test suite (`@SpringBootTest`); data is wiped on restart. The H2 console
+  is *not* reachable: the security config authenticates every non-public route, so the
+  console route is blocked (and we don't punch a hole for it).
+- **`docker` profile (recommended for real runs):** **PostgreSQL** via
+  `backend/docker-compose.yml` (`docker compose up -d`), configured through the gitignored
+  `application-docker.properties` (copy from the committed `.example`; see `SETUP.md`).
+- **`local` profile:** **PostgreSQL** against a natively-installed server, via the gitignored
+  `application-local.properties`.
 
-**Why H2 by default:** a new contributor can run the API with no database install. The
-PostgreSQL profiles exist for realistic/persistent environments.
+**Why keep H2 as the default:** the build and tests run with no database install, and a
+contributor can boot the API instantly. PostgreSQL (via Docker) is the realistic/persistent
+target and is kept out of the default profile specifically so `mvn test` / `clean install`
+never require a running database.

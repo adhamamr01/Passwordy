@@ -61,7 +61,7 @@ class PasswordRepository(
         apiService.generatePin(request).unwrap("generate PIN")
 
     suspend fun getCategories(): List<String> =
-        apiService.getCategories().unwrap("fetch categories")
+        apiService.getCategories(bearerToken()).unwrap("fetch categories")
 }
 
 private fun <T> Response<T>.unwrap(action: String): T {

@@ -74,16 +74,28 @@ Passwordy/
 
 ## 🚀 Quick Start
 
-### Backend (default H2 profile — zero setup)
+### Backend with Docker Postgres (recommended)
+```bash
+cd backend
+
+# 1. Start PostgreSQL (+ pgAdmin on http://localhost:5050)
+docker compose up -d
+
+# 2. Create application-docker.properties from the template and fill in a JWT
+#    secret (see SETUP.md), then run against the docker profile:
+mvn spring-boot:run -Dspring-boot.run.profiles=docker
+```
+The API starts on `http://localhost:8080`. Data persists in a named Docker volume
+across restarts. Full DB/secret setup is in **[SETUP.md](SETUP.md)**.
+
+### Backend without Docker (in-memory H2, zero setup)
 ```bash
 cd backend
 ./mvnw spring-boot:run
 ```
-The API starts on `http://localhost:8080` with an in-memory H2 database
-(console at `/h2-console`). Data resets on restart.
-
-For PostgreSQL (local/docker profiles) and the required secret config, see
-**[SETUP.md](SETUP.md)**.
+Runs against an ephemeral in-memory H2 database — handy for a quick start or tests;
+data is wiped on restart. (The H2 console is intentionally not exposed, since the
+security config authenticates every non-public route.)
 
 ### Frontend (Android)
 Open `frontend/` in Android Studio and run the app on an emulator. The client targets

@@ -24,7 +24,7 @@ interface ApiService {
     suspend fun generatePin(@Body request: PinGenerationRequest): Response<GeneratedPinResponse>
 
     @GET("api/password/categories")
-    suspend fun getCategories(): Response<List<String>>
+    suspend fun getCategories(@Header("Authorization") token: String): Response<List<String>>
 
     @GET("api/passwords")
     suspend fun getAllPasswords(@Header("Authorization") token: String): Response<List<PasswordResponse>>
