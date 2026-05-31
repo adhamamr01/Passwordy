@@ -1,62 +1,130 @@
-# Passwordy - Secure Password Manager
+# Passwordy — Secure Password Manager
 
-A modern password management application with multi-user support and AES-256 encryption.
+A multi-user password manager with a Spring Boot REST API and an Android (Jetpack Compose)
+client. Master passwords are hashed with BCrypt; stored passwords are encrypted server-side
+with AES-256-GCM and only decrypted on explicit request.
 
-## 🏗️ Project Structure
+## ✨ Features
 
-- **backend/** - Java Spring Boot REST API
-- **frontend/** - Kotlin frontend application (coming soon)
+- Multi-user accounts with JWT-based authentication (24-hour tokens)
+- Stored passwords encrypted at rest (AES-256-GCM, unique IV per entry)
+- Decrypt-on-demand: list views never expose plaintext
+- Strong random password generator (guaranteed character mix) and numeric PIN generator
+- Per-user isolation — every read/write is checked for ownership
+- Organize entries by category, with label, username, URL, and notes
+- Android app: login/register, list, detail with reveal/copy, add/edit, generate
+
+## 🧱 Tech Stack
+
+**Backend**
+- Java 17+, Spring Boot 3.x
+- Spring Security + JWT (jjwt)
+- Spring Data JPA / Hibernate
+- H2 (default, in-memory) or PostgreSQL (local/docker profiles)
+- Maven
+
+**Frontend**
+- Kotlin, Jetpack Compose (Material 3)
+- MVVM + Repository, Coroutines + StateFlow
+- Retrofit + OkHttp, Gson
+- DataStore (token persistence)
+
+## 🏗️ Architecture (at a glance)
+
+```
+Android app (Compose)                 Spring Boot API
+┌──────────────────────────┐          ┌───────────────────────────────────────┐
+│ Screen → ViewModel        │  HTTPS   │ Controller → Service → Repository → DB │
+│   → Repository → ApiService├─────────▶│            (JWT filter, BCrypt, AES)   │
+│   (StateFlow UI states)   │  Bearer  │                                         │
+└──────────────────────────┘   JWT    └───────────────────────────────────────┘
+```
+
+- **Backend** is strictly layered: controllers handle HTTP only, services own business
+  logic and authorization, repositories handle persistence.
+- **Frontend** is MVVM: Compose screens observe `StateFlow`s from ViewModels, which call
+  repositories wrapping a Retrofit `ApiService`.
+
+See **[DECISIONS.md](DECISIONS.md)** for the reasoning behind these choices.
+
+## 📁 Project Structure
+
+```
+Passwordy/
+├── backend/                        Spring Boot REST API
+│   └── src/main/java/com/adhamamr/passwordy/
+│       ├── controller/             HTTP endpoints
+│       ├── service/                business logic, encryption, auth
+│       ├── repository/             Spring Data JPA repositories
+│       ├── model/                  JPA entities (User, Password)
+│       ├── dto/                    request/response objects
+│       ├── security/               JWT util, filter, user details
+│       ├── config/                 Spring Security configuration
+│       ├── exception/              typed exceptions + global handler
+│       └── util/                   master-password validator
+├── frontend/                       Android app (Kotlin + Compose)
+│   └── app/src/main/java/com/adhamamr/passwordy/
+│       ├── ui/                     screens, viewmodels, navigation, theme
+│       └── data/                   network (Retrofit), repositories, local (DataStore)
+├── README.md                       this file
+├── DECISIONS.md                    architecture & design rationale
+├── API.md                          full HTTP API reference
+└── SETUP.md                        environment setup (DB, secrets, build)
+```
 
 ## 🚀 Quick Start
 
-### Backend (Spring Boot)
+### Backend (default H2 profile — zero setup)
 ```bash
 cd backend
 ./mvnw spring-boot:run
 ```
+The API starts on `http://localhost:8080` with an in-memory H2 database
+(console at `/h2-console`). Data resets on restart.
 
-The API will be available at: `http://localhost:8080`
+For PostgreSQL (local/docker profiles) and the required secret config, see
+**[SETUP.md](SETUP.md)**.
 
-### Frontend (Coming Soon)
+### Frontend (Android)
+Open `frontend/` in Android Studio and run the app on an emulator. The client targets
+`http://10.0.2.2:8080/` (the emulator's alias for the host's `localhost`); change
+`RetrofitInstance.BASE_URL` to your machine's LAN IP for a physical device.
 
-The frontend is currently under development.
+## 🔒 Security Model
 
-## 🔒 Security Features
+- **Master passwords:** BCrypt-hashed, never stored or returned in recoverable form.
+- **Stored passwords:** AES-256-GCM with a fresh random IV per entry; ciphertext is
+  Base64-encoded with the IV prepended.
+- **Authorization:** every password operation verifies the entry belongs to the
+  authenticated user (404 if missing, 403 if not yours).
+- **Transport:** the JWT is sent as a `Bearer` token; sessions are stateless.
 
-- ✅ Multi-user authentication with JWT
-- ✅ BCrypt password hashing for master passwords
-- ✅ AES-256-GCM encryption for stored passwords
-- ✅ User isolation (users can only access their own passwords)
-- ✅ Secure password generation with SecureRandom
+> ⚠️ **Development limitation:** the AES and JWT keys are currently hardcoded constants in
+> `AESEncryptionService` / `JwtUtil`. Externalizing them to config/secrets is the
+> documented next step — see [DECISIONS.md](DECISIONS.md) §6.
 
-## 📚 API Documentation
+## 📚 API
 
-API is available at: `http://localhost:8080/api`
+Full reference with request/response shapes and status codes: **[API.md](API.md)**.
 
-### Authentication Endpoints
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login and get JWT token
+Quick map:
 
-### Password Endpoints (Requires Authentication)
-- `POST /api/password/generate` - Generate random password
-- `POST /api/passwords` - Save password
-- `GET /api/passwords` - Get all passwords
-- `GET /api/passwords/{id}` - Get password by ID
-- `POST /api/passwords/{id}/decrypt` - Decrypt password
-- `PUT /api/passwords/{id}` - Update password
-- `DELETE /api/passwords/{id}` - Delete password
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| POST | `/api/auth/register` | — | Create account, get token |
+| POST | `/api/auth/login` | — | Log in, get token |
+| POST | `/api/password/generate` | — | Generate a password |
+| POST | `/api/password/generate-pin` | — | Generate a PIN |
+| GET | `/api/password/categories` | ✓ | List category labels |
+| GET | `/api/passwords` | ✓ | List my passwords (encrypted) |
+| POST | `/api/passwords` | ✓ | Save a password |
+| GET | `/api/passwords/{id}` | ✓ | Get one (encrypted) |
+| PUT | `/api/passwords/{id}` | ✓ | Update one |
+| DELETE | `/api/passwords/{id}` | ✓ | Delete one |
+| POST | `/api/passwords/{id}/decrypt` | ✓ | Reveal plaintext |
 
-## 🛠️ Tech Stack
+## 📖 Documentation
 
-### Backend
-- Java 17+
-- Spring Boot 3.x
-- Spring Security with JWT
-- JPA/Hibernate
-- PostgreSQL / H2 Database
-- Maven
-
-### Frontend (Planned)
-- Kotlin
-- (To be determined)
-
+- **[DECISIONS.md](DECISIONS.md)** — architecture and design rationale
+- **[API.md](API.md)** — HTTP API reference
+- **[SETUP.md](SETUP.md)** — environment / database / secrets setup

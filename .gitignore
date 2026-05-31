@@ -21,6 +21,11 @@ Thumbs.db
 .env
 *.env
 
+# Local secret config — DO NOT COMMIT (real credentials).
+# Commit the *.example templates instead; copy them and fill in real values locally.
+backend/src/main/resources/application-local.properties
+backend/src/main/resources/application-docker.properties
+
 # Database
 *.db
 *.db-journal

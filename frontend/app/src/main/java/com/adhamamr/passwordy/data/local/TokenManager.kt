@@ -9,9 +9,12 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-// Extension property to create DataStore instance
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "auth_prefs")
 
+/**
+ * Persists the session JWT and username in Jetpack DataStore so they survive process death.
+ * Reads are exposed as [Flow]s; [clearToken] wipes everything on logout.
+ */
 class TokenManager(private val context: Context) {
 
     companion object {

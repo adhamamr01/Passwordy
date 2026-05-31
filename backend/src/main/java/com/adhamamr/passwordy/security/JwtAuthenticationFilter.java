@@ -16,6 +16,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+/**
+ * Authenticates each request from its {@code Authorization: Bearer <jwt>} header.
+ *
+ * <p>Runs once per request before {@code UsernamePasswordAuthenticationFilter}. If the
+ * header is missing or the token is invalid the chain simply proceeds unauthenticated —
+ * {@code SecurityConfig} then rejects protected routes. A malformed token is logged and
+ * swallowed rather than aborting the request, so public routes still work without a token.
+ */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 

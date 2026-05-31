@@ -8,6 +8,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Public authentication endpoints: register and login. Both return an {@link AuthResponse}
+ * containing a freshly issued JWT the client uses for all subsequent protected calls.
+ */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {

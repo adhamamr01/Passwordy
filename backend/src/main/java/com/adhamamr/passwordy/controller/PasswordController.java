@@ -13,6 +13,15 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * REST endpoints for password generation and per-user password CRUD.
+ *
+ * <p>Generation routes are public; the {@code /passwords} routes require authentication and
+ * operate on the caller's own records only. The authenticated username is read from the
+ * security context and passed to the service, which enforces ownership. This controller
+ * delegates all logic (including decryption) to {@link PasswordService} and holds no data
+ * access of its own.
+ */
 @RestController
 @RequestMapping("/api")
 public class PasswordController {

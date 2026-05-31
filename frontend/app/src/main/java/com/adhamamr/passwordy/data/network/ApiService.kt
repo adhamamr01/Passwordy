@@ -4,6 +4,11 @@ import com.adhamamr.passwordy.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
 
+/**
+ * Retrofit definition of the Passwordy HTTP API. Authenticated calls take the
+ * `Authorization` header explicitly (supplied by the repository); auth and generation
+ * endpoints omit it. Each method returns a Retrofit [Response] so callers can inspect status.
+ */
 interface ApiService {
 
     @POST("api/auth/register")

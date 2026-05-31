@@ -5,6 +5,11 @@ import lombok.Getter;
 import lombok.Setter;
 import java.time.LocalDateTime;
 
+/**
+ * A stored credential owned by a {@link User}. The {@code value} column holds the
+ * AES-GCM-encrypted password (never plaintext). {@code createdAt} is set on insert and
+ * {@code updatedAt} only on update, so a never-edited row has a null {@code updatedAt}.
+ */
 @Getter
 @Setter
 @Entity

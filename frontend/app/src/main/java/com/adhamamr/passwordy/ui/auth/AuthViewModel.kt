@@ -11,6 +11,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import retrofit2.Response
 
+/**
+ * Backs the login and register screens. On a successful response it persists the returned
+ * JWT and username via [TokenManager], then exposes the outcome through [uiState]. The
+ * shared [authenticate] helper holds the identical request/response handling that login and
+ * register would otherwise duplicate.
+ */
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = AuthRepository()

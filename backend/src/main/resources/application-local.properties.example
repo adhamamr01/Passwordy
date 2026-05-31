@@ -1,0 +1,39 @@
+# Template for application-local.properties (local PostgreSQL).
+# Copy this file to application-local.properties and fill in real values.
+# The real file is gitignored and must NOT be committed.
+#
+# Run with:  mvn spring-boot:run -Dspring-boot.run.profiles=local
+
+# JWT Configuration
+# Generate a key:  openssl rand -base64 64
+jwt.secret=<GENERATE_A_BASE64_JWT_SECRET>
+jwt.expiration=86400000
+
+# Server Configuration
+server.port=8080
+
+# PostgreSQL Configuration (Local Installation)
+spring.datasource.url=jdbc:postgresql://localhost:5432/passwordy
+spring.datasource.username=postgres
+spring.datasource.password=<YOUR_LOCAL_POSTGRES_PASSWORD>
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# JPA/Hibernate Configuration
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.properties.hibernate.format_sql=true
+
+# Connection Pool Settings
+spring.datasource.hikari.maximum-pool-size=10
+spring.datasource.hikari.minimum-idle=5
+spring.datasource.hikari.connection-timeout=30000
+
+# Logging
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
+logging.level.com.adhamamr.passwordy=DEBUG
+
+# Encryption key for AES-256 (Base64-encoded 256-bit key)
+# Generate a key:  openssl rand -base64 32
+encryption.secret.key=<GENERATE_A_BASE64_AES_256_KEY>

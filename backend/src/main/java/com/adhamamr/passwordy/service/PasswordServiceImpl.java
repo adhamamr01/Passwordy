@@ -14,6 +14,13 @@ import java.security.SecureRandom;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Core password business logic: generation, encrypted CRUD, and ownership enforcement.
+ *
+ * <p>Stored password values are encrypted via {@link EncryptionService} on write and only
+ * decrypted on explicit request. Every entry lookup goes through {@link #findOwnedPassword},
+ * which is the single authorization gate ensuring a user can only touch their own records.
+ */
 @Service
 public class PasswordServiceImpl implements PasswordService {
 
@@ -36,6 +43,15 @@ public class PasswordServiceImpl implements PasswordService {
         this.encryptionService = encryptionService;
     }
 
+    /**
+     * Generates a random password that always contains at least one uppercase, lowercase,
+     * and digit character (plus one symbol when {@code includeSymbols} is true); the
+     * remaining characters are drawn from the selected alphabet and the whole string is
+     * shuffled so the guaranteed characters are not in fixed positions.
+     *
+     * @param length total length, must be at least 8
+     * @throws IllegalArgumentException if {@code length < 8}
+     */
     @Override
     public String generatePassword(int length, boolean includeSymbols) {
         if (length < 8) {
@@ -147,6 +163,13 @@ public class PasswordServiceImpl implements PasswordService {
         return pin.toString();
     }
 
+    /**
+     * Loads a password and verifies it belongs to {@code username}. This is the single
+     * authorization gate shared by get/update/delete/decrypt.
+     *
+     * @throws ResourceNotFoundException if no password has the given id (→ HTTP 404)
+     * @throws UnauthorizedException if the password belongs to another user (→ HTTP 403)
+     */
     private Password findOwnedPassword(Long id, String username) {
         Password password = passwordRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Password not found with id: " + id));

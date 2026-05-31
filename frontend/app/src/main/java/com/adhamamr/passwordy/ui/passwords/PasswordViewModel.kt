@@ -50,6 +50,15 @@ sealed class DeleteState {
     data class Error(val message: String) : DeleteState()
 }
 
+/**
+ * Drives the password screens (list, detail, add/edit, generate).
+ *
+ * <p>Each concern exposes its own [StateFlow] of a sealed state (e.g. [uiState],
+ * [detailState], [decryptState]) so screens render purely from observed state. After a
+ * successful create/update/delete the loaded list is mutated in place rather than re-fetched
+ * from the server, avoiding a redundant round-trip. The shared [persistPassword] helper
+ * holds the common Loading→try→Success/Error flow for save and update.
+ */
 class PasswordViewModel(
     private val repository: PasswordRepository
 ) : ViewModel() {

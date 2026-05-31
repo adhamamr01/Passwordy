@@ -4,6 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+/**
+ * Enforces master-password strength at registration: minimum 8 characters with at least one
+ * uppercase letter, lowercase letter, digit, and special character. Returns a
+ * {@link ValidationResult} accumulating every failed rule rather than failing on the first,
+ * so the caller can report all problems at once. The character-class patterns are compiled
+ * once as static constants.
+ */
 public class MasterPasswordValidator {
 
     private static final int MIN_LENGTH = 8;

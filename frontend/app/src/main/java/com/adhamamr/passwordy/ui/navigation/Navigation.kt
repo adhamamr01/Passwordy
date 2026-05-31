@@ -12,6 +12,11 @@ import com.adhamamr.passwordy.ui.passwords.AddEditPasswordScreen
 import com.adhamamr.passwordy.ui.passwords.PasswordDetailScreen
 import com.adhamamr.passwordy.ui.passwords.PasswordListScreen
 
+/**
+ * Type-safe enumeration of navigation destinations and their route strings. Detail/edit
+ * screens take a `passwordId` path argument; use [Screen.EditPassword.createRoute] /
+ * [Screen.PasswordDetail.createRoute] to build a concrete route.
+ */
 sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Register : Screen("register")
@@ -25,6 +30,11 @@ sealed class Screen(val route: String) {
     }
 }
 
+/**
+ * Hosts the app's navigation graph, starting at the login screen. On successful auth it
+ * navigates to the password list while clearing the auth screens from the back stack so
+ * Back doesn't return to login; logout resets the stack entirely.
+ */
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()

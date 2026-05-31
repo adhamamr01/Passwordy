@@ -11,6 +11,13 @@ import com.adhamamr.passwordy.util.MasterPasswordValidator;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+/**
+ * Registration and login logic.
+ *
+ * <p>Registration validates master-password strength, rejects duplicate username/email,
+ * stores only the BCrypt hash of the master password, and returns a JWT. Login verifies the
+ * supplied master password against the stored hash (never decrypting) and issues a JWT.
+ */
 @Service
 public class AuthServiceImpl implements AuthService {
 

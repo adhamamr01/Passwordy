@@ -9,6 +9,18 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
 
+/**
+ * AES-256-GCM implementation of {@link EncryptionService} for stored password values.
+ *
+ * <p>Each {@link #encrypt} call generates a fresh random 12-byte IV — GCM must never reuse
+ * an IV under the same key, or confidentiality and authentication both break. The stored
+ * format is {@code Base64( IV(12 bytes) || ciphertext+tag )}, so every value is
+ * self-contained and {@link #decrypt} needs no external IV bookkeeping. GCM's auth tag
+ * also makes tampering with a stored value fail loudly on decrypt.
+ *
+ * <p>The 256-bit key is hardcoded for development only; production should load it from
+ * configuration/secrets (see DECISIONS.md §6).
+ */
 @Service
 public class AESEncryptionService implements EncryptionService {
 
@@ -16,7 +28,7 @@ public class AESEncryptionService implements EncryptionService {
     private static final int TAG_LENGTH_BIT = 128;
     private static final int IV_LENGTH_BYTE = 12;
 
-    // In production, store this in an environment variable or secrets vault.
+    /** Development-only key. Externalize to env/vault for production (DECISIONS.md §6). */
     private static final String SECRET_KEY = "MySecretKey12345MySecretKey12345";
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();

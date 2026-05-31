@@ -6,6 +6,7 @@ import com.adhamamr.passwordy.data.model.RegisterRequest
 import com.adhamamr.passwordy.data.network.RetrofitInstance
 import retrofit2.Response
 
+/** Thin wrapper over the auth endpoints; returns the raw Retrofit [Response] for the ViewModel to handle. */
 class AuthRepository {
 
     private val api = RetrofitInstance.api

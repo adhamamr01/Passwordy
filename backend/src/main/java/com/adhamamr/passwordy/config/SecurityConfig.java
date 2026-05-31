@@ -12,6 +12,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Central Spring Security setup: stateless JWT auth with CSRF disabled.
+ *
+ * <p>Auth and password-generation routes are public; everything else requires a valid
+ * token. Sessions are disabled ({@code STATELESS}) so the JWT is the sole credential, and
+ * {@link JwtAuthenticationFilter} runs ahead of the username/password filter to populate
+ * the security context from the bearer token.
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {

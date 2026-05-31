@@ -6,11 +6,14 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
+/**
+ * Singleton Retrofit/OkHttp setup exposing the lazily-built [api].
+ *
+ * [BASE_URL] defaults to `10.0.2.2` — the Android emulator's alias for the host machine's
+ * `localhost`. For a physical device, change it to the host's LAN IP (e.g. 192.168.x.x).
+ */
 object RetrofitInstance {
 
-    // Change this to your computer's IP address when testing on physical device
-    // For emulator: use 10.0.2.2
-    // For physical device: use your computer's local IP (e.g., 192.168.1.100)
     private const val BASE_URL = "http://10.0.2.2:8080/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {

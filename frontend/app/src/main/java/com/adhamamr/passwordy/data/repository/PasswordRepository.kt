@@ -6,6 +6,13 @@ import com.adhamamr.passwordy.data.network.ApiService
 import kotlinx.coroutines.flow.first
 import retrofit2.Response
 
+/**
+ * Wraps [ApiService] for all password operations, attaching the bearer token and unwrapping
+ * Retrofit [Response]s into domain values (throwing on failure) via the [unwrap] helper.
+ *
+ * <p>The JWT is cached in memory after its first read so each call doesn't hit DataStore
+ * from disk; callers must invoke [clearTokenCache] on logout so a stale token isn't reused.
+ */
 class PasswordRepository(
     private val apiService: ApiService,
     private val tokenManager: TokenManager
@@ -13,12 +20,14 @@ class PasswordRepository(
 
     private var cachedToken: String? = null
 
+    /** Returns the `Authorization` header value, reading the token from DataStore once and caching it. */
     private suspend fun bearerToken(): String {
         val token = cachedToken ?: tokenManager.token.first()?.also { cachedToken = it }
             ?: throw Exception("No authentication token found")
         return "Bearer $token"
     }
 
+    /** Drops the cached token so the next call re-reads from DataStore. Call on logout. */
     fun clearTokenCache() {
         cachedToken = null
     }
