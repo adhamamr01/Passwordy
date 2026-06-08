@@ -1,5 +1,7 @@
 package com.adhamamr.passwordy.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -20,9 +22,15 @@ import java.util.stream.Collectors;
  *   <li>{@link ResourceNotFoundException} → 404</li>
  *   <li>any other {@link RuntimeException} → 500</li>
  * </ul>
+ *
+ * <p>The 4xx responses carry the exception's (deliberate, client-safe) message. Unexpected
+ * 500s are logged server-side with their stack trace and returned as a generic message, so
+ * internal details are never leaked to the client.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /** Bean Validation failures on {@code @Valid @RequestBody} arguments. */
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -55,8 +63,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, String>> handleRuntimeException(RuntimeException ex) {
+        // Log the real cause for ops; return a generic message so internals aren't leaked.
+        log.error("Unhandled exception", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", safeMessage(ex)));
+                .body(Map.of("error", "Internal server error"));
     }
 
     private static String safeMessage(Throwable ex) {

@@ -44,7 +44,7 @@ Errors are returned as `{ "error": "<message>" }` and mapped by `GlobalException
 | `401 Unauthorized` | missing/invalid/expired JWT (`JwtAuthenticationEntryPoint`), or a failed login — wrong username **or** password |
 | `403 Forbidden` | authenticated user is not the owner of the resource (`UnauthorizedException`) |
 | `404 Not Found` | user or password does not exist (`ResourceNotFoundException`) |
-| `500 Internal Server Error` | unexpected server errors (e.g. encryption/decryption failure) |
+| `500 Internal Server Error` | unexpected server errors (e.g. encryption/decryption failure) — returns a generic message; details are logged server-side |
 
 > Request bodies are validated with Bean Validation: `register` requires a non-blank username,
 > a valid `email`, and a non-blank `masterPassword`; `passwords` requires non-blank `label`,
