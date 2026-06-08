@@ -40,6 +40,7 @@ Errors are returned as `{ "error": "<message>" }` and mapped by `GlobalException
 | `200 OK` | successful read/update/login |
 | `201 Created` | successful register or password save |
 | `204 No Content` | successful delete |
+| `401 Unauthorized` | missing/invalid/expired JWT on a protected route (`JwtAuthenticationEntryPoint`) |
 | `403 Forbidden` | authenticated user is not the owner of the resource (`UnauthorizedException`) |
 | `404 Not Found` | user or password does not exist (`ResourceNotFoundException`) |
 | `500 Internal Server Error` | other server errors — encryption/decryption failure, invalid generation length, duplicate username/email, wrong password on login |

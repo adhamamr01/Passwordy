@@ -1,5 +1,6 @@
 package com.adhamamr.passwordy.config;
 
+import com.adhamamr.passwordy.security.JwtAuthenticationEntryPoint;
 import com.adhamamr.passwordy.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,9 +26,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint authenticationEntryPoint;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          JwtAuthenticationEntryPoint authenticationEntryPoint) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.authenticationEntryPoint = authenticationEntryPoint;
     }
 
     @Bean
@@ -42,6 +46,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)  // No sessions, using JWT
                 )
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))  // 401 JSON instead of default
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
