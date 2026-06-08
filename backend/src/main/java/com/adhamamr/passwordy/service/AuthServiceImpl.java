@@ -4,7 +4,7 @@ import com.adhamamr.passwordy.dto.AuthResponse;
 import com.adhamamr.passwordy.dto.LoginRequest;
 import com.adhamamr.passwordy.dto.RegisterRequest;
 import com.adhamamr.passwordy.exception.BadRequestException;
-import com.adhamamr.passwordy.exception.ResourceNotFoundException;
+import com.adhamamr.passwordy.exception.InvalidCredentialsException;
 import com.adhamamr.passwordy.model.User;
 import com.adhamamr.passwordy.repository.UserRepository;
 import com.adhamamr.passwordy.security.JwtUtil;
@@ -63,10 +63,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Invalid username or password"));
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid username or password"));
 
         if (!passwordEncoder.matches(request.getMasterPassword(), user.getMasterPasswordHash())) {
-            throw new RuntimeException("Invalid username or password");
+            throw new InvalidCredentialsException("Invalid username or password");
         }
 
         String token = jwtUtil.generateToken(user.getUsername());

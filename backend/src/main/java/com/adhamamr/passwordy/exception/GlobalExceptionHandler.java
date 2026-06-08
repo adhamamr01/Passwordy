@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
  * <ul>
  *   <li>{@link MethodArgumentNotValidException}, {@link BadRequestException},
  *       {@link IllegalArgumentException} → 400</li>
+ *   <li>{@link InvalidCredentialsException} → 401 (failed login)</li>
  *   <li>{@link UnauthorizedException} → 403</li>
  *   <li>{@link ResourceNotFoundException} → 404</li>
  *   <li>any other {@link RuntimeException} → 500</li>
@@ -35,6 +36,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({BadRequestException.class, IllegalArgumentException.class})
     public ResponseEntity<Map<String, String>> handleBadRequest(RuntimeException ex) {
         return ResponseEntity.badRequest().body(Map.of("error", safeMessage(ex)));
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidCredentials(InvalidCredentialsException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", safeMessage(ex)));
     }
 
     @ExceptionHandler(UnauthorizedException.class)
