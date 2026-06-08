@@ -61,8 +61,11 @@ authorization) lives in the backend.
   integration has been flaky here.
 
 ## Known limitations / follow-ups
-- **Hardcoded crypto keys:** the AES key (`AESEncryptionService`) and JWT secret (`JwtUtil`) are
-  in-source constants — externalize them to config/secrets (DECISIONS.md §6).
+- **Crypto keys are externalized:** the AES key (`AESEncryptionService`, `encryption.secret.key`)
+  and JWT secret (`JwtUtil`, `jwt.secret`) are read from config (Base64). The committed H2 profile
+  ships throwaway dev defaults; real secrets live in the gitignored
+  `application-{local,docker}.properties`. Rotating the AES key makes existing ciphertext
+  undecryptable — there is no in-place re-encryption (DECISIONS.md §6).
 - **Rate limiting** is implemented: tiered Bucket4j token buckets in a `RateLimitFilter`
   (auth/generation keyed by client IP, authenticated CRUD by username), configurable via
   `ratelimit.*` and returning HTTP 429. Currently in-memory/single-instance and keyed off

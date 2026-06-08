@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -13,20 +14,25 @@ import java.util.function.Function;
 /**
  * Issues and validates the HS256 JSON Web Tokens that authenticate API requests.
  *
- * <p>A token carries the username as its subject and expires after
- * {@link #JWT_TOKEN_VALIDITY}. Because auth is stateless, the token itself is the only
- * proof of identity — there is no server-side session to revoke before expiry.
+ * <p>A token carries the username as its subject and expires after the configured validity.
+ * Because auth is stateless, the token itself is the only proof of identity — there is no
+ * server-side session to revoke before expiry.
+ *
+ * <p>The signing key ({@code jwt.secret}, Base64-encoded) and validity ({@code jwt.expiration},
+ * millis) come from configuration. The committed profile ships throwaway dev defaults; real
+ * deployments override them via the gitignored {@code application-{local,docker}.properties}.
  */
 @Component
 public class JwtUtil {
 
-    /**
-     * HMAC signing key. Hardcoded for development only; production should load this from
-     * configuration/secrets (see DECISIONS.md §6).
-     */
-    private static final String SECRET = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
+    private final SecretKey signingKey;
+    private final long tokenValidityMs;
 
-    private static final long JWT_TOKEN_VALIDITY = 24 * 60 * 60 * 1000;
+    public JwtUtil(@Value("${jwt.secret}") String secret,
+                   @Value("${jwt.expiration}") long tokenValidityMs) {
+        this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+        this.tokenValidityMs = tokenValidityMs;
+    }
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -38,7 +44,7 @@ public class JwtUtil {
 
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
-                .verifyWith(getSigningKey())
+                .verifyWith(signingKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
@@ -49,11 +55,12 @@ public class JwtUtil {
     }
 
     public String generateToken(String username) {
+        long now = System.currentTimeMillis();
         return Jwts.builder()
                 .subject(username)
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + JWT_TOKEN_VALIDITY))
-                .signWith(getSigningKey())
+                .issuedAt(new Date(now))
+                .expiration(new Date(now + tokenValidityMs))
+                .signWith(signingKey)
                 .compact();
     }
 
@@ -64,10 +71,5 @@ public class JwtUtil {
      */
     public boolean validateToken(String token, String username) {
         return extractUsername(token).equals(username) && !isTokenExpired(token);
-    }
-
-    private SecretKey getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(SECRET);
-        return Keys.hmacShaKeyFor(keyBytes);
     }
 }

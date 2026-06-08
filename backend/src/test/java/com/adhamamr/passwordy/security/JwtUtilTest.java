@@ -8,11 +8,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JwtUtilTest {
 
+    // Base64-encoded 64-byte test key; value is irrelevant beyond being valid for HS256.
+    private static final String TEST_SECRET =
+            "aK55YKBmvk1ckwElf+VLQNod04L1IJNr2g1xYlNB6LL0p7pPx1ERvdwRXw81yvQtsZs4GmIx7552EO6LyDuTdQ==";
+
     private JwtUtil jwtUtil;
 
     @BeforeEach
     void setUp() {
-        jwtUtil = new JwtUtil();
+        jwtUtil = new JwtUtil(TEST_SECRET, 86400000L);
     }
 
     @Test
