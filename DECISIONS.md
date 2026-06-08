@@ -199,17 +199,22 @@ changed to the host's LAN IP.
 
 ## 10. Persistence profiles
 
-- **Default (`application.properties`):** in-memory **H2** — zero-setup, used for a quick
-  start and for the test suite (`@SpringBootTest`); data is wiped on restart. The H2 console
-  is *not* reachable: the security config authenticates every non-public route, so the
-  console route is blocked (and we don't punch a hole for it).
+- **Default (`application.properties`):** in-memory **H2** — zero-setup quick start; data is
+  wiped on restart. The H2 console is *not* reachable: the security config authenticates
+  every non-public route, so the console route is blocked (and we don't punch a hole for it).
 - **`docker` profile (recommended for real runs):** **PostgreSQL** via
   `backend/docker-compose.yml` (`docker compose up -d`), configured through the gitignored
   `application-docker.properties` (copy from the committed `.example`; see `SETUP.md`).
 - **`local` profile:** **PostgreSQL** against a natively-installed server, via the gitignored
   `application-local.properties`.
 
-**Why keep H2 as the default:** the build and tests run with no database install, and a
-contributor can boot the API instantly. PostgreSQL (via Docker) is the realistic/persistent
-target and is kept out of the default profile specifically so `mvn test` / `clean install`
-never require a running database.
+**Tests run against PostgreSQL, not H2.** `PasswordyApplicationTests` imports
+`TestcontainersConfiguration`, which starts a throwaway `postgres:16-alpine` container and
+wires it into the datasource via `@ServiceConnection`. Tests therefore exercise the same
+engine as production (catching Postgres-specific schema/dialect issues H2 would mask), and
+`src/test/resources/application.properties` keeps the suite off the H2 datasource. The
+trade-off: **`mvn test` / `clean install` now require Docker to be running.**
+
+> The PostgreSQL JDBC driver (`org.postgresql:postgresql`) was previously missing from
+> `pom.xml` — the `docker`/`local` profiles could not actually have connected without it. It
+> was added (runtime scope) alongside the Testcontainers work.

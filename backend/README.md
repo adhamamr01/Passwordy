@@ -14,11 +14,15 @@ The API starts on `http://localhost:8080` (H2 console at `/h2-console`).
 For the PostgreSQL `local` / `docker` profiles and the required secret configuration,
 see [SETUP.md](../SETUP.md) in the project root.
 
-## Building
+## Building & Testing
 
 ```bash
 ./mvnw clean install
 ```
+
+> **Tests require Docker.** The suite runs against a throwaway PostgreSQL container
+> (Testcontainers), so Docker must be running for `./mvnw test` / `clean install`. Use
+> `./mvnw clean install -DskipTests` to build without it.
 
 ## Documentation
 
