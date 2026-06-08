@@ -1,14 +1,18 @@
 package com.adhamamr.passwordy.config;
 
+import com.adhamamr.passwordy.security.ClientIpResolver;
 import com.adhamamr.passwordy.security.JwtAuthenticationEntryPoint;
 import com.adhamamr.passwordy.security.JwtAuthenticationFilter;
+import com.adhamamr.passwordy.security.RateLimitFilter;
+import com.adhamamr.passwordy.security.RateLimitingService;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -23,15 +27,25 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  */
 @Configuration
 @EnableWebSecurity
+@EnableConfigurationProperties(RateLimitProperties.class)
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
+    private final RateLimitProperties rateLimitProperties;
+    private final RateLimitingService rateLimitingService;
+    private final ClientIpResolver clientIpResolver;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
-                          JwtAuthenticationEntryPoint authenticationEntryPoint) {
+                          JwtAuthenticationEntryPoint authenticationEntryPoint,
+                          RateLimitProperties rateLimitProperties,
+                          RateLimitingService rateLimitingService,
+                          ClientIpResolver clientIpResolver) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.authenticationEntryPoint = authenticationEntryPoint;
+        this.rateLimitProperties = rateLimitProperties;
+        this.rateLimitingService = rateLimitingService;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @Bean
@@ -47,13 +61,18 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)  // No sessions, using JWT
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))  // 401 JSON instead of default
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // After JWT auth so the authenticated tier can key by username; still ahead of the controller.
+                .addFilterAfter(
+                        new RateLimitFilter(rateLimitProperties, rateLimitingService, clientIpResolver),
+                        JwtAuthenticationFilter.class);
 
         return http.build();
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        // OWASP-recommended defaults: 19 MiB memory, 2 iterations, 1 thread
+        return Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();
     }
 }

@@ -63,7 +63,10 @@ authorization) lives in the backend.
 ## Known limitations / follow-ups
 - **Hardcoded crypto keys:** the AES key (`AESEncryptionService`) and JWT secret (`JwtUtil`) are
   in-source constants — externalize them to config/secrets (DECISIONS.md §6).
-- **Rate limiting** on `/api/auth/**` is not yet implemented (brute-force / enumeration).
+- **Rate limiting** is implemented: tiered Bucket4j token buckets in a `RateLimitFilter`
+  (auth/generation keyed by client IP, authenticated CRUD by username), configurable via
+  `ratelimit.*` and returning HTTP 429. Currently in-memory/single-instance and keyed off
+  `getRemoteAddr()` (no trusted-proxy `X-Forwarded-For` handling yet).
 - **Registration enumeration:** `register` reveals "username/email already exists"; the planned
   fix is an email-verification flow (DECISIONS.md §7).
 

@@ -1,6 +1,6 @@
 package com.adhamamr.passwordy.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** Password as returned to clients; {@code value} is the encrypted ciphertext (decrypt-on-demand). */
 public record PasswordResponse(
@@ -11,6 +11,6 @@ public record PasswordResponse(
         String url,
         String notes,
         String category,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt) {
+        Instant createdAt,
+        Instant updatedAt) {
 }

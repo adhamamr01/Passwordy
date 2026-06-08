@@ -3,12 +3,12 @@ package com.adhamamr.passwordy.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
- * A registered account. Stores only the BCrypt {@code masterPasswordHash}, never the master
- * password itself. {@code createdAt} is set on insert and {@code updatedAt} only on update,
- * so a never-edited row has a null {@code updatedAt}.
+ * A registered account. Stores only the Argon2id {@code masterPasswordHash}, never the master
+ * password itself. {@code createdAt} is set on insert; {@code updatedAt} is initialised to
+ * {@code createdAt} and refreshed on every update.
  */
 @Getter
 @Setter
@@ -19,20 +19,19 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "username", unique = true, nullable = false)
+    @Column(unique = true, nullable = false)
     private String username;
 
-    @Column(name = "email", unique = true, nullable = false)
+    @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(name = "master_password_hash", nullable = false)
-    private String masterPasswordHash;  // BCrypt hashed password
+    @Column(nullable = false)
+    private String masterPasswordHash;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     public User() {}
 
@@ -44,11 +43,12 @@ public class User {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = Instant.now();
+        updatedAt = createdAt;
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = Instant.now();
     }
 }
