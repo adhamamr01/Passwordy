@@ -40,13 +40,17 @@ Errors are returned as `{ "error": "<message>" }` and mapped by `GlobalException
 | `200 OK` | successful read/update/login |
 | `201 Created` | successful register or password save |
 | `204 No Content` | successful delete |
-| `401 Unauthorized` | missing/invalid/expired JWT on a protected route (`JwtAuthenticationEntryPoint`) |
+| `400 Bad Request` | invalid input — failed validation (`@Valid`), weak master password, duplicate username/email, or out-of-range generation length |
+| `401 Unauthorized` | missing/invalid/expired JWT (`JwtAuthenticationEntryPoint`), or a failed login — wrong username **or** password |
 | `403 Forbidden` | authenticated user is not the owner of the resource (`UnauthorizedException`) |
 | `404 Not Found` | user or password does not exist (`ResourceNotFoundException`) |
-| `500 Internal Server Error` | other server errors — encryption/decryption failure, invalid generation length, duplicate username/email, wrong password on login |
+| `500 Internal Server Error` | unexpected server errors (e.g. encryption/decryption failure) — returns a generic message; details are logged server-side |
 
-> The 500 cases for validation/duplicate/wrong-password are a known rough edge: they are
-> thrown as plain `RuntimeException` and so are not mapped to 4xx. See `DECISIONS.md` §7.
+> Request bodies are validated with Bean Validation: `register` requires a non-blank username,
+> a valid `email`, and a non-blank `masterPassword`; `passwords` requires non-blank `label`,
+> `password`, and `category`; generation length must be ≥8 (password) or 4–12 (PIN).
+> A failed `login` (unknown username or wrong password) returns **401** with one generic
+> message, so it can't be used to tell whether a username exists.
 
 ---
 

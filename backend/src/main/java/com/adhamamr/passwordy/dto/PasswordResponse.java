@@ -1,22 +1,16 @@
 package com.adhamamr.passwordy.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
 import java.time.LocalDateTime;
 
-@Getter
-@Setter
-@AllArgsConstructor
-public class PasswordResponse {
-    private Long id;
-    private String label;
-    private String value;  // encrypted/masked in real implementation remember adham please!!!!
-    private String username;
-    private String url;
-    private String notes;
-    private String category;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
+/** Password as returned to clients; {@code value} is the encrypted ciphertext (decrypt-on-demand). */
+public record PasswordResponse(
+        Long id,
+        String label,
+        String value,
+        String username,
+        String url,
+        String notes,
+        String category,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt) {
 }

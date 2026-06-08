@@ -3,7 +3,8 @@ package com.adhamamr.passwordy.service;
 import com.adhamamr.passwordy.dto.AuthResponse;
 import com.adhamamr.passwordy.dto.LoginRequest;
 import com.adhamamr.passwordy.dto.RegisterRequest;
-import com.adhamamr.passwordy.exception.ResourceNotFoundException;
+import com.adhamamr.passwordy.exception.BadRequestException;
+import com.adhamamr.passwordy.exception.InvalidCredentialsException;
 import com.adhamamr.passwordy.model.User;
 import com.adhamamr.passwordy.repository.UserRepository;
 import com.adhamamr.passwordy.security.JwtUtil;
@@ -25,33 +26,41 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
+    /**
+     * A throwaway BCrypt hash (at the configured cost) used to spend the same time hashing
+     * when an unknown username is supplied at login, so the response time can't reveal
+     * whether the account exists (timing-based enumeration guard).
+     */
+    private final String dummyHash;
+
     public AuthServiceImpl(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            JwtUtil jwtUtil) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.dummyHash = passwordEncoder.encode("timing-guard-not-a-real-password");
     }
 
     @Override
     public AuthResponse register(RegisterRequest request) {
         MasterPasswordValidator.ValidationResult validation =
-                MasterPasswordValidator.validate(request.getMasterPassword());
+                MasterPasswordValidator.validate(request.masterPassword());
         if (!validation.isValid()) {
-            throw new RuntimeException(validation.getErrorMessage());
+            throw new BadRequestException(validation.getErrorMessage());
         }
 
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists");
+        if (userRepository.existsByUsername(request.username())) {
+            throw new BadRequestException("Username already exists");
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+        if (userRepository.existsByEmail(request.email())) {
+            throw new BadRequestException("Email already exists");
         }
 
         User user = new User();
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
-        user.setMasterPasswordHash(passwordEncoder.encode(request.getMasterPassword()));
+        user.setUsername(request.username());
+        user.setEmail(request.email());
+        user.setMasterPasswordHash(passwordEncoder.encode(request.masterPassword()));
 
         User savedUser = userRepository.save(user);
         String token = jwtUtil.generateToken(savedUser.getUsername());
@@ -61,11 +70,16 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Invalid username or password"));
+        User user = userRepository.findByUsername(request.username()).orElse(null);
+        if (user == null) {
+            // Hash against a dummy so an unknown username takes the same time as a wrong
+            // password — otherwise response timing would reveal whether the account exists.
+            passwordEncoder.matches(request.masterPassword(), dummyHash);
+            throw new InvalidCredentialsException("Invalid username or password");
+        }
 
-        if (!passwordEncoder.matches(request.getMasterPassword(), user.getMasterPasswordHash())) {
-            throw new RuntimeException("Invalid username or password");
+        if (!passwordEncoder.matches(request.masterPassword(), user.getMasterPasswordHash())) {
+            throw new InvalidCredentialsException("Invalid username or password");
         }
 
         String token = jwtUtil.generateToken(user.getUsername());

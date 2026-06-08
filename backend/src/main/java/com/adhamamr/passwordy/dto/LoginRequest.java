@@ -1,11 +1,8 @@
 package com.adhamamr.passwordy.dto;
 
-import lombok.Getter;
-import lombok.Setter;
+import jakarta.validation.constraints.NotBlank;
 
-@Getter
-@Setter
-public class LoginRequest {
-    private String username;
-    private String masterPassword;
+public record LoginRequest(
+        @NotBlank String username,
+        @NotBlank String masterPassword) {
 }
