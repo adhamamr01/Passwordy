@@ -20,9 +20,7 @@ see [SETUP.md](../SETUP.md) in the project root.
 ./mvnw clean install
 ```
 
-> **Tests require Docker.** The suite runs against a throwaway PostgreSQL container
-> (Testcontainers), so Docker must be running for `./mvnw test` / `clean install`. Use
-> `./mvnw clean install -DskipTests` to build without it.
+> Tests run on in-memory **H2** — no database or Docker required.
 
 ## Documentation
 

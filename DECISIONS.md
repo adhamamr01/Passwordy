@@ -199,21 +199,20 @@ changed to the host's LAN IP.
 
 ## 10. Persistence profiles
 
-- **Default (`application.properties`):** in-memory **H2** — zero-setup quick start; data is
-  wiped on restart. The H2 console is *not* reachable: the security config authenticates
-  every non-public route, so the console route is blocked (and we don't punch a hole for it).
+- **Default (`application.properties`):** in-memory **H2** — zero-setup, and what the test
+  suite runs against; data is wiped on restart. The H2 console is *not* reachable: the
+  security config authenticates every non-public route, so the console route is blocked.
 - **`docker` profile (recommended for real runs):** **PostgreSQL** via
   `backend/docker-compose.yml` (`docker compose up -d`), configured through the gitignored
   `application-docker.properties` (copy from the committed `.example`; see `SETUP.md`).
 - **`local` profile:** **PostgreSQL** against a natively-installed server, via the gitignored
   `application-local.properties`.
 
-**Tests run against PostgreSQL, not H2.** `PasswordyApplicationTests` imports
-`TestcontainersConfiguration`, which starts a throwaway `postgres:16-alpine` container and
-wires it into the datasource via `@ServiceConnection`. Tests therefore exercise the same
-engine as production (catching Postgres-specific schema/dialect issues H2 would mask), and
-`src/test/resources/application.properties` keeps the suite off the H2 datasource. The
-trade-off: **`mvn test` / `clean install` now require Docker to be running.**
+**Tests run on in-memory H2** — `mvn test` / `clean install` need no database or Docker. A
+Testcontainers-backed PostgreSQL test was prototyped but reverted: the docker-java client in
+current Testcontainers (≤1.21.4) can't negotiate with Docker Engine 29.x. Revisit once
+Testcontainers supports Docker 29; until then, PostgreSQL parity is exercised by running the
+app under the `docker`/`local` profiles.
 
 > The PostgreSQL JDBC driver (`org.postgresql:postgresql`) was previously missing from
 > `pom.xml` — the `docker`/`local` profiles could not actually have connected without it. It

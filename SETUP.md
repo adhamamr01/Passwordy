@@ -157,9 +157,8 @@ private const val BASE_URL = "http://192.168.x.x:8080/"
 cd backend
 ./mvnw test
 ```
-The tests run against a throwaway **PostgreSQL container** managed by Testcontainers, so
-**Docker must be running** (no separate `docker compose up` needed — the container is started
-and torn down automatically). To build without running tests: `./mvnw clean install -DskipTests`.
+The tests run against in-memory **H2** — no database or Docker required. To build without
+running tests: `./mvnw clean install -DskipTests`.
 
 ### Test Backend with Postman
 1. Import collection from `/docs/postman_collection.json` (if available)
