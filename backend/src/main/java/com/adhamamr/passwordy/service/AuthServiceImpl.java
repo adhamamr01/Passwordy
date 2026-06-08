@@ -26,12 +26,20 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
+    /**
+     * A throwaway BCrypt hash (at the configured cost) used to spend the same time hashing
+     * when an unknown username is supplied at login, so the response time can't reveal
+     * whether the account exists (timing-based enumeration guard).
+     */
+    private final String dummyHash;
+
     public AuthServiceImpl(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            JwtUtil jwtUtil) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.dummyHash = passwordEncoder.encode("timing-guard-not-a-real-password");
     }
 
     @Override
@@ -62,8 +70,13 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new InvalidCredentialsException("Invalid username or password"));
+        User user = userRepository.findByUsername(request.getUsername()).orElse(null);
+        if (user == null) {
+            // Hash against a dummy so an unknown username takes the same time as a wrong
+            // password — otherwise response timing would reveal whether the account exists.
+            passwordEncoder.matches(request.getMasterPassword(), dummyHash);
+            throw new InvalidCredentialsException("Invalid username or password");
+        }
 
         if (!passwordEncoder.matches(request.getMasterPassword(), user.getMasterPasswordHash())) {
             throw new InvalidCredentialsException("Invalid username or password");

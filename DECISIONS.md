@@ -148,7 +148,10 @@ duplicate-account failures throw `BadRequestException` (400) rather than a bare 
 
 **Login** returns **401** for both an unknown username and a wrong password, via
 `InvalidCredentialsException` carrying one generic message — the API never reveals which
-field was wrong, so it can't be used to enumerate accounts.
+field was wrong. It also runs a BCrypt comparison against a dummy hash when the username is
+unknown, so the two paths take similar time and **response timing** can't be used to
+enumerate accounts either. (The `register` endpoint still reveals duplicate username/email,
+and brute-force throttling is a separate concern — both are tracked follow-ups.)
 
 ---
 
