@@ -7,7 +7,7 @@
 #
 # The credentials below are non-secret development defaults and match
 # application-docker.properties.example. Run the app against this DB with:
-#   mvn spring-boot:run -Dspring-boot.run.profiles=docker
+#   ./mvnw spring-boot:run -Dspring-boot.run.profiles=docker
 
 services:
   postgres:
@@ -18,7 +18,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      # Bound to localhost so the dev DB isn't reachable from the LAN.
+      - "127.0.0.1:5432:5432"
     volumes:
       - passwordy-pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -29,14 +30,16 @@ services:
     restart: unless-stopped
 
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:9.15
     container_name: passwordy-pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@passwordy.com
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_CONFIG_SERVER_MODE: "False"
     ports:
-      - "5050:80"
+      - "127.0.0.1:5050:80"
+    volumes:
+      - passwordy-pgadmin:/var/lib/pgadmin
     depends_on:
       postgres:
         condition: service_healthy
@@ -44,3 +47,4 @@ services:
 
 volumes:
   passwordy-pgdata:
+  passwordy-pgadmin:
