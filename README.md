@@ -83,7 +83,7 @@ docker compose up -d
 
 # 2. Create application-docker.properties from the template and fill in a JWT
 #    secret (see SETUP.md), then run against the docker profile:
-mvn spring-boot:run -Dspring-boot.run.profiles=docker
+./mvnw spring-boot:run -Dspring-boot.run.profiles=docker
 ```
 The API starts on `http://localhost:8080`. Data persists in a named Docker volume
 across restarts. Full DB/secret setup is in **[SETUP.md](SETUP.md)**.
@@ -98,9 +98,21 @@ data is wiped on restart. (The H2 console is intentionally not exposed, since th
 security config authenticates every non-public route.)
 
 ### Frontend (Android)
-Open `frontend/` in Android Studio and run the app on an emulator. The client targets
-`http://10.0.2.2:8080/` (the emulator's alias for the host's `localhost`); change
-`RetrofitInstance.BASE_URL` to your machine's LAN IP for a physical device.
+The Android app is a **Gradle** project. The simplest path is to open `frontend/` in
+Android Studio and hit **Run ▶** on an emulator. From the command line, use the Gradle
+wrapper (`gradlew` on macOS/Linux, `gradlew.bat` on Windows):
+```bash
+cd frontend
+./gradlew assembleDebug   # build a debug APK (app/build/outputs/apk/)
+./gradlew installDebug    # build + install on a running emulator/device
+./gradlew test            # run unit tests
+```
+The client targets `http://10.0.2.2:8080/` (the emulator's alias for the host's
+`localhost`); change `RetrofitInstance.BASE_URL` to your machine's LAN IP for a physical device.
+
+> **Build tools:** the backend uses **Maven** (`mvnw`) and the frontend uses **Gradle**
+> (`gradlew`) — each is the standard for its platform (Android effectively requires Gradle).
+> The two build independently; there's no shared build step.
 
 ## 🔒 Security Model
 
