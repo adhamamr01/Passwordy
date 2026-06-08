@@ -134,14 +134,21 @@ This is listed here so it is impossible to mistake the hardcoded keys for an ove
 
 | Exception | HTTP status | Meaning |
 |-----------|-------------|---------|
-| `ResourceNotFoundException` | 404 | user/password not found |
+| `MethodArgumentNotValidException`, `BadRequestException`, `IllegalArgumentException` | 400 | invalid input (failed `@Valid`, weak master password, duplicate account, bad length) |
+| `JwtAuthenticationEntryPoint` (filter-level) | 401 | missing/invalid/expired JWT on a protected route |
 | `UnauthorizedException` | 403 | authenticated, but not the owner |
+| `ResourceNotFoundException` | 404 | user/password not found |
 | other `RuntimeException` | 500 | unexpected server error (e.g. crypto failure) |
 
-**Decision (refactor):** previously *every* `RuntimeException` was mapped to 404, so an
-ownership violation and an encryption failure both looked like "not found." Introducing
-the two typed exceptions lets clients distinguish "doesn't exist" (404) from "not yours"
-(403) from "server broke" (500).
+**Decision (refactor):** previously *every* `RuntimeException` was mapped to 404; introducing
+typed exceptions lets clients distinguish the cases above. **Input validation** uses Bean
+Validation (`@Valid` on request DTOs with `jakarta.validation` constraints), so malformed
+requests return a clean **400** with field messages instead of a 500. Weak-master-password and
+duplicate-account failures throw `BadRequestException` (400) rather than a bare `RuntimeException`.
+
+> Remaining rough edge: a wrong password on **login** still surfaces as 500 (and an unknown
+> username as 404). Unifying both to **401** — without revealing which field was wrong — is
+> the recommended next step.
 
 ---
 

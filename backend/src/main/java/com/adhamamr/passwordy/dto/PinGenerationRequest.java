@@ -1,10 +1,14 @@
 package com.adhamamr.passwordy.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
 public class PinGenerationRequest {
-    private int length = 6;  // Default PIN length
+    @Min(4)
+    @Max(12)
+    private int length = 6;
 }

@@ -3,6 +3,7 @@ package com.adhamamr.passwordy.service;
 import com.adhamamr.passwordy.dto.AuthResponse;
 import com.adhamamr.passwordy.dto.LoginRequest;
 import com.adhamamr.passwordy.dto.RegisterRequest;
+import com.adhamamr.passwordy.exception.BadRequestException;
 import com.adhamamr.passwordy.exception.ResourceNotFoundException;
 import com.adhamamr.passwordy.model.User;
 import com.adhamamr.passwordy.repository.UserRepository;
@@ -38,14 +39,14 @@ public class AuthServiceImpl implements AuthService {
         MasterPasswordValidator.ValidationResult validation =
                 MasterPasswordValidator.validate(request.getMasterPassword());
         if (!validation.isValid()) {
-            throw new RuntimeException(validation.getErrorMessage());
+            throw new BadRequestException(validation.getErrorMessage());
         }
 
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists");
+            throw new BadRequestException("Username already exists");
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new BadRequestException("Email already exists");
         }
 
         User user = new User();

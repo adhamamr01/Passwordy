@@ -5,6 +5,7 @@ import com.adhamamr.passwordy.dto.PasswordResponse;
 import com.adhamamr.passwordy.dto.PasswordSaveRequest;
 import com.adhamamr.passwordy.dto.PinGenerationRequest;
 import com.adhamamr.passwordy.service.PasswordService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,13 +38,13 @@ public class PasswordController {
     }
 
     @PostMapping("/password/generate")
-    public Map<String, String> generatePassword(@RequestBody PasswordGenerationRequest request) {
+    public Map<String, String> generatePassword(@Valid @RequestBody PasswordGenerationRequest request) {
         String password = passwordService.generatePassword(request.getLength(), request.isIncludeSymbols());
         return Map.of("password", password);
     }
 
     @PostMapping("/password/generate-pin")
-    public Map<String, String> generatePin(@RequestBody PinGenerationRequest request) {
+    public Map<String, String> generatePin(@Valid @RequestBody PinGenerationRequest request) {
         return Map.of("pin", passwordService.generatePin(request.getLength()));
     }
 
@@ -55,7 +56,7 @@ public class PasswordController {
     }
 
     @PostMapping("/passwords")
-    public ResponseEntity<PasswordResponse> savePassword(@RequestBody PasswordSaveRequest request) {
+    public ResponseEntity<PasswordResponse> savePassword(@Valid @RequestBody PasswordSaveRequest request) {
         PasswordResponse response = passwordService.savePassword(request, getAuthenticatedUsername());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -72,7 +73,7 @@ public class PasswordController {
 
     @PutMapping("/passwords/{id}")
     public ResponseEntity<PasswordResponse> updatePassword(@PathVariable Long id,
-                                                           @RequestBody PasswordSaveRequest request) {
+                                                           @Valid @RequestBody PasswordSaveRequest request) {
         return ResponseEntity.ok(passwordService.updatePassword(id, request, getAuthenticatedUsername()));
     }
 
