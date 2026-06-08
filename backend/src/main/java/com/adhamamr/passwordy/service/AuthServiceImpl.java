@@ -45,22 +45,22 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse register(RegisterRequest request) {
         MasterPasswordValidator.ValidationResult validation =
-                MasterPasswordValidator.validate(request.getMasterPassword());
+                MasterPasswordValidator.validate(request.masterPassword());
         if (!validation.isValid()) {
             throw new BadRequestException(validation.getErrorMessage());
         }
 
-        if (userRepository.existsByUsername(request.getUsername())) {
+        if (userRepository.existsByUsername(request.username())) {
             throw new BadRequestException("Username already exists");
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmail(request.email())) {
             throw new BadRequestException("Email already exists");
         }
 
         User user = new User();
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
-        user.setMasterPasswordHash(passwordEncoder.encode(request.getMasterPassword()));
+        user.setUsername(request.username());
+        user.setEmail(request.email());
+        user.setMasterPasswordHash(passwordEncoder.encode(request.masterPassword()));
 
         User savedUser = userRepository.save(user);
         String token = jwtUtil.generateToken(savedUser.getUsername());
@@ -70,15 +70,15 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByUsername(request.getUsername()).orElse(null);
+        User user = userRepository.findByUsername(request.username()).orElse(null);
         if (user == null) {
             // Hash against a dummy so an unknown username takes the same time as a wrong
             // password — otherwise response timing would reveal whether the account exists.
-            passwordEncoder.matches(request.getMasterPassword(), dummyHash);
+            passwordEncoder.matches(request.masterPassword(), dummyHash);
             throw new InvalidCredentialsException("Invalid username or password");
         }
 
-        if (!passwordEncoder.matches(request.getMasterPassword(), user.getMasterPasswordHash())) {
+        if (!passwordEncoder.matches(request.masterPassword(), user.getMasterPasswordHash())) {
             throw new InvalidCredentialsException("Invalid username or password");
         }
 

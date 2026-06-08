@@ -94,12 +94,12 @@ public class PasswordServiceImpl implements PasswordService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Password password = new Password();
-        password.setLabel(request.getLabel());
-        password.setValue(encryptSafe(request.getPassword()));
-        password.setUsername(request.getUsername());
-        password.setUrl(request.getUrl());
-        password.setNotes(request.getNotes());
-        password.setCategory(request.getCategory());
+        password.setLabel(request.label());
+        password.setValue(encryptSafe(request.password()));
+        password.setUsername(request.username());
+        password.setUrl(request.url());
+        password.setNotes(request.notes());
+        password.setCategory(request.category());
         password.setUser(user);
 
         return toResponse(passwordRepository.save(password));
@@ -121,12 +121,12 @@ public class PasswordServiceImpl implements PasswordService {
     public PasswordResponse updatePassword(Long id, PasswordSaveRequest request, String username) {
         Password password = findOwnedPassword(id, username);
 
-        password.setLabel(request.getLabel());
-        password.setValue(encryptSafe(request.getPassword()));
-        password.setUsername(request.getUsername());
-        password.setUrl(request.getUrl());
-        password.setNotes(request.getNotes());
-        password.setCategory(request.getCategory());
+        password.setLabel(request.label());
+        password.setValue(encryptSafe(request.password()));
+        password.setUsername(request.username());
+        password.setUrl(request.url());
+        password.setNotes(request.notes());
+        password.setCategory(request.category());
 
         return toResponse(passwordRepository.save(password));
     }
