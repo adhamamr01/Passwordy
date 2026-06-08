@@ -8,11 +8,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AESEncryptionServiceTest {
 
+    // Base64-encoded 32-byte (256-bit) test key.
+    private static final String TEST_KEY = "pIi2Yod1hDyFQiXIJr5MuR6L0LXuRPSNnISn6W5YdSM=";
+
     private AESEncryptionService service;
 
     @BeforeEach
     void setUp() {
-        service = new AESEncryptionService();
+        service = new AESEncryptionService(TEST_KEY);
     }
 
     @Test

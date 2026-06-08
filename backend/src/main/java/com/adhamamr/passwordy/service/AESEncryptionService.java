@@ -1,5 +1,6 @@
 package com.adhamamr.passwordy.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Cipher;
@@ -20,8 +21,10 @@ import java.util.Base64;
  * self-contained and {@link #decrypt} needs no external IV bookkeeping. GCM's auth tag
  * also makes tampering with a stored value fail loudly on decrypt.
  *
- * <p>The 256-bit key is hardcoded for development only; production should load it from
- * configuration/secrets (see DECISIONS.md §6).
+ * <p>The 256-bit key comes from {@code encryption.secret.key} (Base64-encoded). The committed
+ * profile ships a throwaway dev default; real deployments override it via the gitignored
+ * {@code application-{local,docker}.properties}. Rotating the key makes any data encrypted
+ * under the old key undecryptable — there is no in-place re-encryption.
  */
 @Service
 public class AESEncryptionService implements EncryptionService {
@@ -30,14 +33,11 @@ public class AESEncryptionService implements EncryptionService {
     private static final int TAG_LENGTH_BIT = 128;
     private static final int IV_LENGTH_BYTE = 12;
 
-    /** Development-only key. Externalize to env/vault for production (DECISIONS.md §6). */
-    private static final String SECRET_KEY = "MySecretKey12345MySecretKey12345";
-
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private final SecretKey secretKey;
 
-    public AESEncryptionService() {
-        this.secretKey = new SecretKeySpec(SECRET_KEY.getBytes(), "AES");
+    public AESEncryptionService(@Value("${encryption.secret.key}") String base64Key) {
+        this.secretKey = new SecretKeySpec(Base64.getDecoder().decode(base64Key.trim()), "AES");
     }
 
     @Override
