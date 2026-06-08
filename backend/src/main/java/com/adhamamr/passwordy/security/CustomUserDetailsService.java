@@ -7,8 +7,13 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
+import java.util.List;
 
+/**
+ * Bridges Spring Security's {@link UserDetailsService} contract to {@link com.adhamamr.passwordy.repository.UserRepository}.
+ * Used by the authentication manager to load a user by username during token validation.
+ * No roles or authorities are assigned — all users have the same level of access.
+ */
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
@@ -26,7 +31,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
                 user.getMasterPasswordHash(),
-                new ArrayList<>()  // No roles/authorities for now
+                List.of()
         );
     }
 }

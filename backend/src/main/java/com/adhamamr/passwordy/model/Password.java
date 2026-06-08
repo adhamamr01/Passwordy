@@ -3,12 +3,12 @@ package com.adhamamr.passwordy.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * A stored credential owned by a {@link User}. The {@code value} column holds the
- * AES-GCM-encrypted password (never plaintext). {@code createdAt} is set on insert and
- * {@code updatedAt} only on update, so a never-edited row has a null {@code updatedAt}.
+ * AES-GCM-encrypted password (never plaintext). {@code createdAt} is set on insert;
+ * {@code updatedAt} is initialised to {@code createdAt} and refreshed on every update.
  */
 @Getter
 @Setter
@@ -19,47 +19,40 @@ public class Password {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "label", nullable = false)
+    @Column(nullable = false)
     private String label;
 
     @Column(name = "password_value", nullable = false)
     private String value;
 
-    @Column(name = "username")
     private String username;
 
-    @Column(name = "url")
     private String url;
 
-    @Column(name = "notes", columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String notes;
 
-    @Column(name = "category")
     private String category;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     public Password() {}
 
-    public Password(String value) {
-        this.value = value;
-    }
-
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = Instant.now();
+        updatedAt = createdAt;
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = Instant.now();
     }
 }

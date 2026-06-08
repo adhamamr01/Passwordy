@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Core password business logic: generation, encrypted CRUD, and ownership enforcement.
@@ -29,7 +28,7 @@ public class PasswordServiceImpl implements PasswordService {
     private static final String NUMBERS = "0123456789";
     private static final String SYMBOLS = "!@#$%^&*()_+";
 
-    private static final SecureRandom random = new SecureRandom();
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final PasswordRepository passwordRepository;
     private final UserRepository userRepository;
@@ -61,17 +60,17 @@ public class PasswordServiceImpl implements PasswordService {
         StringBuilder chars = new StringBuilder(UPPERCASE + LOWERCASE + NUMBERS);
         StringBuilder password = new StringBuilder();
 
-        password.append(UPPERCASE.charAt(random.nextInt(UPPERCASE.length())));
-        password.append(LOWERCASE.charAt(random.nextInt(LOWERCASE.length())));
-        password.append(NUMBERS.charAt(random.nextInt(NUMBERS.length())));
+        password.append(UPPERCASE.charAt(RANDOM.nextInt(UPPERCASE.length())));
+        password.append(LOWERCASE.charAt(RANDOM.nextInt(LOWERCASE.length())));
+        password.append(NUMBERS.charAt(RANDOM.nextInt(NUMBERS.length())));
 
         if (includeSymbols) {
             chars.append(SYMBOLS);
-            password.append(SYMBOLS.charAt(random.nextInt(SYMBOLS.length())));
+            password.append(SYMBOLS.charAt(RANDOM.nextInt(SYMBOLS.length())));
         }
 
         for (int i = password.length(); i < length; i++) {
-            password.append(chars.charAt(random.nextInt(chars.length())));
+            password.append(chars.charAt(RANDOM.nextInt(chars.length())));
         }
 
         return shuffleString(password.toString());
@@ -80,7 +79,7 @@ public class PasswordServiceImpl implements PasswordService {
     private String shuffleString(String input) {
         char[] chars = input.toCharArray();
         for (int i = chars.length - 1; i > 0; i--) {
-            int j = random.nextInt(i + 1);
+            int j = RANDOM.nextInt(i + 1);
             char temp = chars[i];
             chars[i] = chars[j];
             chars[j] = temp;
@@ -109,7 +108,7 @@ public class PasswordServiceImpl implements PasswordService {
     public List<PasswordResponse> getAllPasswords(String username) {
         return passwordRepository.findByUserUsername(username).stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -158,7 +157,7 @@ public class PasswordServiceImpl implements PasswordService {
 
         StringBuilder pin = new StringBuilder();
         for (int i = 0; i < length; i++) {
-            pin.append(NUMBERS.charAt(random.nextInt(NUMBERS.length())));
+            pin.append(NUMBERS.charAt(RANDOM.nextInt(NUMBERS.length())));
         }
         return pin.toString();
     }

@@ -11,13 +11,16 @@ import com.adhamamr.passwordy.security.JwtUtil;
 import com.adhamamr.passwordy.util.MasterPasswordValidator;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Registration and login logic.
  *
  * <p>Registration validates master-password strength, rejects duplicate username/email,
- * stores only the BCrypt hash of the master password, and returns a JWT. Login verifies the
- * supplied master password against the stored hash (never decrypting) and issues a JWT.
+ * stores only the Argon2id hash of the master password, and returns a JWT. Login verifies
+ * the supplied master password against the stored hash (never decrypting) and issues a JWT.
+ * Existing BCrypt hashes are transparently upgraded to Argon2id on first successful login
+ * (lazy rehash migration).
  */
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -27,9 +30,9 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
 
     /**
-     * A throwaway BCrypt hash (at the configured cost) used to spend the same time hashing
-     * when an unknown username is supplied at login, so the response time can't reveal
-     * whether the account exists (timing-based enumeration guard).
+     * A throwaway Argon2id hash used to spend the same time hashing when an unknown username
+     * is supplied at login, so the response time can't reveal whether the account exists
+     * (timing-based enumeration guard).
      */
     private final String dummyHash;
 
@@ -69,6 +72,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.username()).orElse(null);
         if (user == null) {
@@ -80,6 +84,12 @@ public class AuthServiceImpl implements AuthService {
 
         if (!passwordEncoder.matches(request.masterPassword(), user.getMasterPasswordHash())) {
             throw new InvalidCredentialsException("Invalid username or password");
+        }
+
+        // Lazy rehash: upgrade BCrypt hashes to Argon2id on first successful login.
+        if (passwordEncoder.upgradeEncoding(user.getMasterPasswordHash())) {
+            user.setMasterPasswordHash(passwordEncoder.encode(request.masterPassword()));
+            userRepository.save(user);
         }
 
         String token = jwtUtil.generateToken(user.getUsername());
