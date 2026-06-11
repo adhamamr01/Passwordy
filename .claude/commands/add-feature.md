@@ -67,14 +67,34 @@ skip the security or stress phases — they are the point of this workflow.
   - **Auth/session:** does the route correctly require a JWT? Is it in the right `SecurityConfig`
     matcher? Any way to bypass the rate limiter?
 - For each finding: fix it, add a regression test, and note it. Re-run `/security-review` until clean.
+- **Loop back when a finding changes behavior.** A security fix often shifts a status code or
+  response (e.g. 403→404 to kill an enumeration oracle). When that happens, return to Phase 4
+  and Phase 5: update every affected test *and* the docs (`API.md`, `DECISIONS.md`) so the suite
+  and the reference stay consistent before moving on. Re-run `./mvnw clean test` to confirm green.
 
 ## Phase 7 — Stress test
-- Stress the new endpoint(s) against a locally running instance
-  (`./mvnw spring-boot:run`, default H2). Prefer an installed tool (`k6`, `hey`, `ab`,
-  `wrk`); if none is available, write a short concurrent `curl`/PowerShell loop. Put any script
-  under `backend/loadtest/` (gitignored if throwaway).
-- Capture: throughput, p50/p95/p99 latency, error rate, and **confirm the rate limiter returns
-  429 under flood** (and that legitimate traffic below the limit is unaffected).
+Run the app for real and load the new endpoint(s). Follow the lifecycle strictly — a stray
+JVM left running will hold the port and can corrupt the next build's `target/`.
+
+1. **Pick a free port — don't assume 8080.** It's often taken (Docker/WSL publish a proxy
+   there). Choose an explicit free port and start on it:
+   `./mvnw spring-boot:run -Dspring-boot.run.jvmArguments=-Dserver.port=8081` (run in the
+   background; default H2, no DB setup). If a port check is needed, verify nothing is listening
+   first (`Get-NetTCPConnection -LocalPort <p>` on Windows) — and if something is, identify it
+   before killing; it may be unrelated (e.g. Docker), so just pick another port.
+2. **Poll readiness** before firing load — hit a public route (`POST /api/password/generate`)
+   until it answers, rather than sleeping a fixed time.
+3. **Load it.** Prefer an installed tool (`k6`, `hey`, `ab`, `wrk`); otherwise a short concurrent
+   `curl`/PowerShell loop. For an authenticated endpoint, register a user, grab the JWT, and do a
+   quick functional sanity pass (happy path) before flooding. Put any script under
+   `backend/loadtest/` (gitignored if throwaway).
+4. **Capture:** throughput, p50/p95/p99 latency, error rate, and **confirm the rate limiter
+   returns 429 under flood** (and that legitimate traffic below the limit is unaffected). Note
+   that greedy refill lets a trickle through, so the 429 threshold is approximate.
+5. **Always stop the instance afterward** (`Stop-Process` the PID on the port, or kill the
+   background run). Confirm the port is free before continuing — a lingering devtools instance
+   touching `target/classes` causes transient `NoSuchFileException` build failures; if you hit
+   one, ensure the app is stopped and re-run `./mvnw clean test`.
 - Record results in the PR/commit description. Flag any limit that needs tuning in `ratelimit.*`.
 
 ## Phase 8 — Ship
