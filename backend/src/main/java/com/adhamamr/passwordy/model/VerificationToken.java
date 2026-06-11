@@ -7,8 +7,9 @@ import lombok.Setter;
 import java.time.Instant;
 
 /**
- * A single-use email-verification token tied to a {@link User}. Created (disabled user) at
- * registration and consumed by {@code /api/auth/verify}; expired or unknown tokens are rejected.
+ * A single-use token tied to a {@link User}, carrying a {@link TokenPurpose} (email
+ * verification or password reset). Consumed by the matching {@code /api/auth/*} route; expired,
+ * unknown, or wrong-purpose tokens are rejected.
  */
 @Getter
 @Setter
@@ -27,14 +28,19 @@ public class VerificationToken {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TokenPurpose purpose;
+
     @Column(nullable = false)
     private Instant expiresAt;
 
     public VerificationToken() {}
 
-    public VerificationToken(String token, User user, Instant expiresAt) {
+    public VerificationToken(String token, User user, TokenPurpose purpose, Instant expiresAt) {
         this.token = token;
         this.user = user;
+        this.purpose = purpose;
         this.expiresAt = expiresAt;
     }
 

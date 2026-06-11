@@ -106,6 +106,23 @@ returned only after a correct password, so it doesn't reveal whether an account 
 
 ---
 
+### `POST /api/auth/forgot-password`
+Start a password reset. **Request:** `{ "email": "alice@example.com" }`.
+**Response `202 Accepted`** — always a generic ack (it never reveals whether the email is
+registered); if the account exists, a reset token is emailed.
+
+### `POST /api/auth/reset-password`
+Complete a reset with the emailed token and a new master password (must meet the strength rules).
+**Request:** `{ "token": "<reset-token>", "newPassword": "NewStr0ng!Pass" }`.
+**Response `200 OK`** — `{ "message": "Your master password has been reset. You can now log in." }`.
+`400` if the token is unknown/expired/not a reset token, or the new password is too weak.
+
+### `POST /api/auth/resend-verification`
+Re-send the verification email for an unverified account. **Request:** `{ "email": "..." }`.
+**Response `202 Accepted`** — generic ack (same enumeration-safe shape as forgot-password).
+
+---
+
 ## Generation endpoints (public)
 
 ### `POST /api/password/generate`

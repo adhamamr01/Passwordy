@@ -8,4 +8,7 @@ public interface EmailService {
 
     /** Sends the account-verification link carrying {@code token} to {@code toEmail}. */
     void sendVerificationEmail(String toEmail, String token);
+
+    /** Sends the password-reset link carrying {@code token} to {@code toEmail}. */
+    void sendPasswordResetEmail(String toEmail, String token);
 }

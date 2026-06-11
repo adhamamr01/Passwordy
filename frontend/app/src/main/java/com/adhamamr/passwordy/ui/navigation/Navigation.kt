@@ -6,8 +6,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.adhamamr.passwordy.ui.auth.ForgotPasswordScreen
 import com.adhamamr.passwordy.ui.auth.LoginScreen
 import com.adhamamr.passwordy.ui.auth.RegisterScreen
+import com.adhamamr.passwordy.ui.auth.ResetPasswordScreen
 import com.adhamamr.passwordy.ui.passwords.AddEditPasswordScreen
 import com.adhamamr.passwordy.ui.passwords.PasswordDetailScreen
 import com.adhamamr.passwordy.ui.passwords.PasswordListScreen
@@ -20,6 +22,8 @@ import com.adhamamr.passwordy.ui.passwords.PasswordListScreen
 sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Register : Screen("register")
+    object ForgotPassword : Screen("forgot_password")
+    object ResetPassword : Screen("reset_password")
     object PasswordList : Screen("password_list")
     object AddPassword : Screen("add_password")
     object EditPassword : Screen("edit_password/{passwordId}") {
@@ -52,7 +56,28 @@ fun AppNavigation() {
                 },
                 onNavigateToRegister = {
                     navController.navigate(Screen.Register.route)
+                },
+                onNavigateToForgotPassword = {
+                    navController.navigate(Screen.ForgotPassword.route)
                 }
+            )
+        }
+
+        composable(Screen.ForgotPassword.route) {
+            ForgotPasswordScreen(
+                onNavigateToReset = { navController.navigate(Screen.ResetPassword.route) },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.ResetPassword.route) {
+            ResetPasswordScreen(
+                onResetComplete = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                },
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

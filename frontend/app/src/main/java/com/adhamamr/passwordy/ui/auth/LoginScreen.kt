@@ -20,6 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit,
     viewModel: AuthViewModel = viewModel()
 ) {
     var username by remember { mutableStateOf("") }
@@ -134,6 +135,14 @@ fun LoginScreen(
                 enabled = uiState !is AuthUiState.Loading
             ) {
                 Text("Don't have an account? Register")
+            }
+
+            // Forgot-password link
+            TextButton(
+                onClick = { viewModel.resetState(); onNavigateToForgotPassword() },
+                enabled = uiState !is AuthUiState.Loading
+            ) {
+                Text("Forgot password?")
             }
 
             // Error message

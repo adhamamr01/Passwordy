@@ -1,9 +1,11 @@
 package com.adhamamr.passwordy.service;
 
 import com.adhamamr.passwordy.dto.AuthResponse;
+import com.adhamamr.passwordy.dto.ForgotPasswordRequest;
 import com.adhamamr.passwordy.dto.LoginRequest;
 import com.adhamamr.passwordy.dto.MessageResponse;
 import com.adhamamr.passwordy.dto.RegisterRequest;
+import com.adhamamr.passwordy.dto.ResetPasswordRequest;
 
 /**
  * Account registration, email verification, and login.
@@ -17,4 +19,13 @@ public interface AuthService {
     MessageResponse register(RegisterRequest request);
     MessageResponse verify(String token);
     AuthResponse login(LoginRequest request);
+
+    /** Starts a password reset (emails a reset token). Enumeration-safe: always a generic ack. */
+    MessageResponse forgotPassword(ForgotPasswordRequest request);
+
+    /** Completes a password reset with the emailed token and a new master password. */
+    MessageResponse resetPassword(ResetPasswordRequest request);
+
+    /** Re-sends a verification email if the account exists and is unverified. Generic ack. */
+    MessageResponse resendVerification(ForgotPasswordRequest request);
 }

@@ -1,13 +1,16 @@
 package com.adhamamr.passwordy.service;
 
 import com.adhamamr.passwordy.dto.AuthResponse;
+import com.adhamamr.passwordy.dto.ForgotPasswordRequest;
 import com.adhamamr.passwordy.dto.LoginRequest;
 import com.adhamamr.passwordy.dto.MessageResponse;
 import com.adhamamr.passwordy.dto.RegisterRequest;
+import com.adhamamr.passwordy.dto.ResetPasswordRequest;
 import com.adhamamr.passwordy.exception.BadRequestException;
 import com.adhamamr.passwordy.exception.EmailNotVerifiedException;
 import com.adhamamr.passwordy.exception.InvalidCredentialsException;
 import com.adhamamr.passwordy.exception.TooManyRequestsException;
+import com.adhamamr.passwordy.model.TokenPurpose;
 import com.adhamamr.passwordy.model.User;
 import com.adhamamr.passwordy.model.VerificationToken;
 import com.adhamamr.passwordy.repository.UserRepository;
@@ -44,6 +47,8 @@ public class AuthServiceImpl implements AuthService {
 
     private static final String REGISTER_ACK =
             "If that username and email are available, a verification link has been sent. Please check your inbox.";
+    private static final String EMAIL_ACK =
+            "If an account with that email exists, we've sent it an email. Please check your inbox.";
 
     private final UserRepository userRepository;
     private final VerificationTokenRepository tokenRepository;
@@ -98,8 +103,7 @@ public class AuthServiceImpl implements AuthService {
             user.setEnabled(false);
             User savedUser = userRepository.save(user);
 
-            String token = UUID.randomUUID().toString();
-            tokenRepository.save(new VerificationToken(token, savedUser, Instant.now().plus(tokenTtl)));
+            String token = issueToken(savedUser, TokenPurpose.VERIFY_EMAIL);
             emailService.sendVerificationEmail(savedUser.getEmail(), token);
         }
 
@@ -109,12 +113,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public MessageResponse verify(String token) {
-        VerificationToken verificationToken = tokenRepository.findByToken(token)
-                .orElseThrow(() -> new BadRequestException("Invalid or expired verification token"));
-        if (verificationToken.isExpired()) {
-            tokenRepository.delete(verificationToken);
-            throw new BadRequestException("Invalid or expired verification token");
-        }
+        VerificationToken verificationToken = consumeToken(token, TokenPurpose.VERIFY_EMAIL);
 
         User user = verificationToken.getUser();
         user.setEnabled(true);
@@ -122,6 +121,66 @@ public class AuthServiceImpl implements AuthService {
         tokenRepository.delete(verificationToken);
 
         return new MessageResponse("Email verified. You can now log in.");
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse forgotPassword(ForgotPasswordRequest request) {
+        // Enumeration-safe: only act if the account exists, but always return the same ack.
+        userRepository.findByEmail(request.email()).ifPresent(user -> {
+            String token = issueToken(user, TokenPurpose.PASSWORD_RESET);
+            emailService.sendPasswordResetEmail(user.getEmail(), token);
+        });
+        return new MessageResponse(EMAIL_ACK);
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse resetPassword(ResetPasswordRequest request) {
+        MasterPasswordValidator.ValidationResult validation =
+                MasterPasswordValidator.validate(request.newPassword());
+        if (!validation.isValid()) {
+            throw new BadRequestException(validation.getErrorMessage());
+        }
+
+        VerificationToken token = consumeToken(request.token(), TokenPurpose.PASSWORD_RESET);
+        User user = token.getUser();
+        user.setMasterPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.setEnabled(true); // a successful reset proves control of the email
+        userRepository.save(user);
+        tokenRepository.delete(token);
+
+        return new MessageResponse("Your master password has been reset. You can now log in.");
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse resendVerification(ForgotPasswordRequest request) {
+        userRepository.findByEmail(request.email())
+                .filter(user -> !user.isEnabled())
+                .ifPresent(user -> {
+                    String token = issueToken(user, TokenPurpose.VERIFY_EMAIL);
+                    emailService.sendVerificationEmail(user.getEmail(), token);
+                });
+        return new MessageResponse(EMAIL_ACK);
+    }
+
+    /** Creates and persists a fresh single-use token; the caller sends the matching email. */
+    private String issueToken(User user, TokenPurpose purpose) {
+        String token = UUID.randomUUID().toString();
+        tokenRepository.save(new VerificationToken(token, user, purpose, Instant.now().plus(tokenTtl)));
+        return token;
+    }
+
+    /** Loads a token, validating it exists, matches {@code purpose}, and hasn't expired. */
+    private VerificationToken consumeToken(String token, TokenPurpose purpose) {
+        VerificationToken found = tokenRepository.findByToken(token)
+                .orElseThrow(() -> new BadRequestException("Invalid or expired token"));
+        if (found.getPurpose() != purpose || found.isExpired()) {
+            tokenRepository.delete(found);
+            throw new BadRequestException("Invalid or expired token");
+        }
+        return found;
     }
 
     @Override
