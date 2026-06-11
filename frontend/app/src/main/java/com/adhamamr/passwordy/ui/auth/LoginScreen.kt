@@ -26,8 +26,10 @@ fun LoginScreen(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var twoFactorCode by remember { mutableStateOf("") }
 
     val uiState by viewModel.uiState.collectAsState()
+    val twoFactor = uiState as? AuthUiState.TwoFactorRequired
 
     // Handle success
     LaunchedEffect(uiState) {
@@ -125,6 +127,37 @@ fun LoginScreen(
                 } else {
                     Text("Login")
                 }
+            }
+
+            // Two-factor step: shown after a correct password when 2FA is enabled.
+            if (twoFactor != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = twoFactorCode,
+                    onValueChange = { twoFactorCode = it },
+                    label = { Text("Authentication code") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = uiState !is AuthUiState.Loading
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        if (twoFactorCode.isNotBlank()) {
+                            viewModel.verifyTwoFactor(twoFactor.twoFactorToken, twoFactorCode.trim())
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = uiState !is AuthUiState.Loading && twoFactorCode.isNotBlank()
+                ) {
+                    Text("Verify")
+                }
+                Text(
+                    "Enter the 6-digit code from your authenticator app, or a recovery code.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))

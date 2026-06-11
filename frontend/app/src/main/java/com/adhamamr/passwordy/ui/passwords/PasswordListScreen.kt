@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +31,7 @@ fun PasswordListScreen(
     onLogout: () -> Unit,
     onAddPassword: () -> Unit,
     onPasswordClick: (Long) -> Unit,
+    onOpenTwoFactor: () -> Unit = {},
     context: Context = LocalContext.current
 ) {
     // Setup ViewModel
@@ -48,6 +50,10 @@ fun PasswordListScreen(
             TopAppBar(
                 title = { Text("My Passwords") },
                 actions = {
+                    // Two-factor settings
+                    IconButton(onClick = onOpenTwoFactor) {
+                        Icon(Icons.Default.Lock, contentDescription = "Two-factor authentication")
+                    }
                     // Logout button
                     IconButton(
                         onClick = {

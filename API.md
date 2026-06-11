@@ -120,6 +120,29 @@ user's refresh tokens.
 
 ---
 
+## Two-factor authentication (TOTP)
+
+Opt-in. When a user has 2FA enabled, **login returns a challenge instead of tokens**:
+`{ "twoFactorRequired": true, "twoFactorToken": "<5-min token>", ... }` (no `token`/`refreshToken`).
+
+### `POST /api/auth/2fa/verify`  *(public — login step 2)*
+Complete login. **Request:** `{ "twoFactorToken": "<from login>", "code": "<6-digit TOTP or recovery code>" }`.
+**Response `200 OK`** — a normal `AuthResponse` with access + refresh tokens. `401` on a bad/expired code.
+
+### `POST /api/account/2fa/setup`  *(auth required)*
+Begin enrollment. **Response `200 OK`** — `{ "secret": "<base32>", "otpauthUri": "otpauth://..." }`
+(render the URI as a QR or enter the secret manually). Not active until enabled.
+
+### `POST /api/account/2fa/enable`  *(auth required)*
+Confirm enrollment. **Request:** `{ "code": "<6-digit>" }`. **Response `200 OK`** —
+`{ "recoveryCodes": ["...", ...], "message": "..." }` (the codes are shown **once**; only hashes
+are stored). `400` on a wrong code.
+
+### `POST /api/account/2fa/disable`  *(auth required)*
+**Request:** `{ "code": "<6-digit>" }`. Disables 2FA and clears recovery codes. `400` on a wrong code.
+
+---
+
 ### `POST /api/auth/forgot-password`
 Start a password reset. **Request:** `{ "email": "alice@example.com" }`.
 **Response `202 Accepted`** — always a generic ack (it never reveals whether the email is

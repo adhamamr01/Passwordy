@@ -7,6 +7,9 @@ import com.adhamamr.passwordy.dto.MessageResponse;
 import com.adhamamr.passwordy.dto.RefreshRequest;
 import com.adhamamr.passwordy.dto.RegisterRequest;
 import com.adhamamr.passwordy.dto.ResetPasswordRequest;
+import com.adhamamr.passwordy.dto.TotpEnableResponse;
+import com.adhamamr.passwordy.dto.TwoFactorVerifyRequest;
+import com.adhamamr.passwordy.model.RecoveryCode;
 import com.adhamamr.passwordy.model.TokenPurpose;
 import com.adhamamr.passwordy.exception.BadRequestException;
 import com.adhamamr.passwordy.exception.EmailNotVerifiedException;
@@ -45,6 +48,9 @@ class AuthServiceImplTest {
     @Mock RateLimitingService rateLimitingService;
     @Mock EmailService emailService;
     @Mock RefreshTokenService refreshTokenService;
+    @Mock TotpService totpService;
+    @Mock com.adhamamr.passwordy.repository.RecoveryCodeRepository recoveryCodeRepository;
+    @Mock EncryptionService encryptionService;
 
     private AuthServiceImpl authService;
 
@@ -53,7 +59,8 @@ class AuthServiceImplTest {
         when(passwordEncoder.encode(anyString())).thenReturn("$hashed$");
         lenient().when(rateLimitingService.tryConsumeLogin(anyString())).thenReturn(true);
         authService = new AuthServiceImpl(userRepository, tokenRepository, passwordEncoder, jwtUtil,
-                rateLimitingService, emailService, refreshTokenService, 24L);
+                rateLimitingService, emailService, refreshTokenService, totpService,
+                recoveryCodeRepository, encryptionService, 24L);
     }
 
     private User verifiedUser() {
@@ -266,6 +273,88 @@ class AuthServiceImplTest {
 
         assertThat(response.message()).contains("Logged out");
         verify(refreshTokenService).revoke("rt");
+    }
+
+    // --- two-factor ---
+
+    @Test
+    void login_with2faEnabled_returnsChallengeNotTokens() {
+        User user = verifiedUser();
+        user.setTotpEnabled(true);
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("StrongP@ss1", "$hashed$")).thenReturn(true);
+        when(passwordEncoder.upgradeEncoding("$hashed$")).thenReturn(false);
+        when(jwtUtil.generateTwoFactorToken("alice")).thenReturn("2fa-token");
+
+        AuthResponse response = authService.login(new LoginRequest("alice", "StrongP@ss1"));
+
+        assertThat(response.twoFactorRequired()).isTrue();
+        assertThat(response.twoFactorToken()).isEqualTo("2fa-token");
+        assertThat(response.token()).isNull();
+        verifyNoInteractions(refreshTokenService);
+    }
+
+    @Test
+    void verifyTwoFactor_validTotpCode_issuesTokens() throws Exception {
+        User user = verifiedUser();
+        user.setTotpEnabled(true);
+        user.setTotpSecret("enc-secret");
+        when(jwtUtil.isTwoFactorToken("2fa-token")).thenReturn(true);
+        when(jwtUtil.extractUsername("2fa-token")).thenReturn("alice");
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(encryptionService.decrypt("enc-secret")).thenReturn("SECRET");
+        when(totpService.verify("SECRET", "123456")).thenReturn(true);
+        when(jwtUtil.generateToken("alice")).thenReturn("access");
+        when(refreshTokenService.issue(user)).thenReturn("refresh");
+
+        AuthResponse response = authService.verifyTwoFactor(new TwoFactorVerifyRequest("2fa-token", "123456"));
+
+        assertThat(response.token()).isEqualTo("access");
+        assertThat(response.refreshToken()).isEqualTo("refresh");
+    }
+
+    @Test
+    void verifyTwoFactor_validRecoveryCode_issuesTokens() throws Exception {
+        User user = verifiedUser();
+        user.setTotpEnabled(true);
+        user.setTotpSecret("enc-secret");
+        when(jwtUtil.isTwoFactorToken("2fa-token")).thenReturn(true);
+        when(jwtUtil.extractUsername("2fa-token")).thenReturn("alice");
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(encryptionService.decrypt("enc-secret")).thenReturn("SECRET");
+        when(totpService.verify(eq("SECRET"), anyString())).thenReturn(false);
+        when(recoveryCodeRepository.findByUserAndCodeHash(eq(user), anyString()))
+                .thenReturn(Optional.of(new RecoveryCode("hash", user)));
+        when(jwtUtil.generateToken("alice")).thenReturn("access");
+        when(refreshTokenService.issue(user)).thenReturn("refresh");
+
+        AuthResponse response = authService.verifyTwoFactor(new TwoFactorVerifyRequest("2fa-token", "BACKUP1"));
+
+        assertThat(response.token()).isEqualTo("access");
+        verify(recoveryCodeRepository).delete(any(RecoveryCode.class));
+    }
+
+    @Test
+    void verifyTwoFactor_invalidToken_throws() {
+        when(jwtUtil.isTwoFactorToken("bad")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.verifyTwoFactor(new TwoFactorVerifyRequest("bad", "123456")))
+                .isInstanceOf(InvalidCredentialsException.class);
+    }
+
+    @Test
+    void enableTotp_validCode_enablesAndReturnsRecoveryCodes() throws Exception {
+        User user = verifiedUser();
+        user.setTotpSecret("enc-secret");
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(encryptionService.decrypt("enc-secret")).thenReturn("SECRET");
+        when(totpService.verify("SECRET", "123456")).thenReturn(true);
+
+        TotpEnableResponse response = authService.enableTotp("alice", "123456");
+
+        assertThat(user.isTotpEnabled()).isTrue();
+        assertThat(response.recoveryCodes()).hasSize(10);
+        verify(recoveryCodeRepository, times(10)).save(any(RecoveryCode.class));
     }
 
     @Test

@@ -365,3 +365,28 @@ access-token validation stateless. (A jti denylist could close that window if ev
 access token; a `TokenAuthenticator` transparently refreshes on a 401 (using a plain, no-authenticator
 client so the refresh call can't recurse) and retries, falling back to logout if refresh fails. This
 moved token handling out of the repositories — `@Header` was dropped from the authenticated routes.
+
+---
+
+## 15. Two-factor authentication (TOTP, opt-in)
+
+Optional TOTP (RFC 6238) as a second login factor, via the `dev.samstevens.totp` library.
+
+- **Enrolment** (`/api/account/2fa/setup` → `/enable`, authenticated): `setup` generates a secret,
+  stored **AES-encrypted** (reusing `AESEncryptionService`) but inactive; `enable` verifies a code,
+  flips `User.totpEnabled`, and returns **10 one-time recovery codes** (only SHA-256 hashes are
+  stored, in `RecoveryCode`).
+- **Login** becomes two steps for 2FA users: step 1 (username+password) succeeds the password
+  check but, instead of tokens, returns `twoFactorRequired=true` + a **5-minute** challenge JWT
+  (claim `twofa`). Step 2 (`POST /api/auth/2fa/verify`, public) accepts a TOTP **or** recovery code
+  and only then issues the access+refresh pair. Because the challenge is reachable only after a
+  correct password, it leaks nothing about account existence.
+- **Secret at rest** is encrypted, not plaintext; **recovery codes** are hashed; a used recovery
+  code is deleted (single-use). Disabling 2FA clears the secret and all recovery codes.
+
+The management routes sit under `/api/account/**` (authenticated) rather than `/api/auth/**`
+(public), so only the login-time `verify` step is unauthenticated. The Android client shows the
+2FA code field inline on login (step 2) and an enrolment screen reachable from the password list.
+
+**Follow-up:** the enrolment screen shows the secret + `otpauth://` URI for manual entry; rendering
+it as an on-screen QR code is a polish item. Recovery-code regeneration isn't exposed yet.

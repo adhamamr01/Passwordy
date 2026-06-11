@@ -93,7 +93,7 @@ class AuthControllerTest {
     @Test
     void login_validCredentials_returns200WithAccessAndRefreshTokens() throws Exception {
         when(authService.login(any())).thenReturn(
-                new AuthResponse("jwt-token", "refresh-tok", "alice", "alice@example.com", "Login successful"));
+                new AuthResponse("jwt-token", "refresh-tok", "alice", "alice@example.com", "Login successful", false, null));
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -108,7 +108,7 @@ class AuthControllerTest {
     @Test
     void refresh_validToken_returns200WithNewTokens() throws Exception {
         when(authService.refresh(any())).thenReturn(
-                new AuthResponse("new-access", "new-refresh", "alice", "alice@example.com", "Token refreshed"));
+                new AuthResponse("new-access", "new-refresh", "alice", "alice@example.com", "Token refreshed", false, null));
 
         mockMvc.perform(post("/api/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)

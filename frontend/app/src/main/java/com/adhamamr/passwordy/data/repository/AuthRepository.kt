@@ -7,6 +7,10 @@ import com.adhamamr.passwordy.data.model.MessageResponse
 import com.adhamamr.passwordy.data.model.RefreshRequest
 import com.adhamamr.passwordy.data.model.RegisterRequest
 import com.adhamamr.passwordy.data.model.ResetPasswordRequest
+import com.adhamamr.passwordy.data.model.TotpCodeRequest
+import com.adhamamr.passwordy.data.model.TotpEnableResponse
+import com.adhamamr.passwordy.data.model.TotpSetupResponse
+import com.adhamamr.passwordy.data.model.TwoFactorVerifyRequest
 import com.adhamamr.passwordy.data.network.RetrofitInstance
 import retrofit2.Response
 
@@ -37,4 +41,14 @@ class AuthRepository {
     suspend fun logout(refreshToken: String): Response<MessageResponse> {
         return api.logout(RefreshRequest(refreshToken))
     }
+
+    suspend fun verifyTwoFactor(twoFactorToken: String, code: String): Response<AuthResponse> {
+        return api.verifyTwoFactor(TwoFactorVerifyRequest(twoFactorToken, code))
+    }
+
+    suspend fun setupTotp(): Response<TotpSetupResponse> = api.setupTotp()
+
+    suspend fun enableTotp(code: String): Response<TotpEnableResponse> = api.enableTotp(TotpCodeRequest(code))
+
+    suspend fun disableTotp(code: String): Response<MessageResponse> = api.disableTotp(TotpCodeRequest(code))
 }

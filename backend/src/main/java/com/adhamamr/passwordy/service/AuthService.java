@@ -7,6 +7,9 @@ import com.adhamamr.passwordy.dto.MessageResponse;
 import com.adhamamr.passwordy.dto.RefreshRequest;
 import com.adhamamr.passwordy.dto.RegisterRequest;
 import com.adhamamr.passwordy.dto.ResetPasswordRequest;
+import com.adhamamr.passwordy.dto.TotpEnableResponse;
+import com.adhamamr.passwordy.dto.TotpSetupResponse;
+import com.adhamamr.passwordy.dto.TwoFactorVerifyRequest;
 
 /**
  * Account registration, email verification, and login.
@@ -35,4 +38,16 @@ public interface AuthService {
 
     /** Revokes the given refresh token (logout). */
     MessageResponse logout(RefreshRequest request);
+
+    /** Begins TOTP setup for the user: generates (but doesn't yet activate) a secret. */
+    TotpSetupResponse setupTotp(String username);
+
+    /** Activates TOTP after the user confirms a code; returns one-time recovery codes. */
+    TotpEnableResponse enableTotp(String username, String code);
+
+    /** Disables TOTP (and clears recovery codes) after confirming a current code. */
+    MessageResponse disableTotp(String username, String code);
+
+    /** Login step 2: verifies a TOTP or recovery code and issues tokens. */
+    AuthResponse verifyTwoFactor(TwoFactorVerifyRequest request);
 }

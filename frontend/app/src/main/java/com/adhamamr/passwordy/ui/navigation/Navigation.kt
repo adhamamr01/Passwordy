@@ -10,6 +10,7 @@ import com.adhamamr.passwordy.ui.auth.ForgotPasswordScreen
 import com.adhamamr.passwordy.ui.auth.LoginScreen
 import com.adhamamr.passwordy.ui.auth.RegisterScreen
 import com.adhamamr.passwordy.ui.auth.ResetPasswordScreen
+import com.adhamamr.passwordy.ui.auth.TwoFactorSetupScreen
 import com.adhamamr.passwordy.ui.passwords.AddEditPasswordScreen
 import com.adhamamr.passwordy.ui.passwords.PasswordDetailScreen
 import com.adhamamr.passwordy.ui.passwords.PasswordListScreen
@@ -24,6 +25,7 @@ sealed class Screen(val route: String) {
     object Register : Screen("register")
     object ForgotPassword : Screen("forgot_password")
     object ResetPassword : Screen("reset_password")
+    object TwoFactorSetup : Screen("two_factor_setup")
     object PasswordList : Screen("password_list")
     object AddPassword : Screen("add_password")
     object EditPassword : Screen("edit_password/{passwordId}") {
@@ -106,8 +108,15 @@ fun AppNavigation() {
                 },
                 onPasswordClick = { passwordId ->
                     navController.navigate(Screen.PasswordDetail.createRoute(passwordId))
+                },
+                onOpenTwoFactor = {
+                    navController.navigate(Screen.TwoFactorSetup.route)
                 }
             )
+        }
+
+        composable(Screen.TwoFactorSetup.route) {
+            TwoFactorSetupScreen(onNavigateBack = { navController.popBackStack() })
         }
 
         composable(Screen.AddPassword.route) {

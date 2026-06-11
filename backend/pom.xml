@@ -41,6 +41,12 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
+		<!-- TOTP two-factor (secret generation, code verification, otpauth URI/QR) -->
+		<dependency>
+			<groupId>dev.samstevens.totp</groupId>
+			<artifactId>totp</artifactId>
+			<version>1.7.1</version>
+		</dependency>
 
 		<!-- Development tooling -->
 		<dependency>
