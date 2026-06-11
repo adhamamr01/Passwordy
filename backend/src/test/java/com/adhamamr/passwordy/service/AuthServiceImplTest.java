@@ -51,6 +51,7 @@ class AuthServiceImplTest {
     @Mock TotpService totpService;
     @Mock com.adhamamr.passwordy.repository.RecoveryCodeRepository recoveryCodeRepository;
     @Mock EncryptionService encryptionService;
+    @Mock BreachCheckService breachCheckService;
 
     private AuthServiceImpl authService;
 
@@ -58,9 +59,10 @@ class AuthServiceImplTest {
     void setUp() {
         when(passwordEncoder.encode(anyString())).thenReturn("$hashed$");
         lenient().when(rateLimitingService.tryConsumeLogin(anyString())).thenReturn(true);
+        lenient().when(breachCheckService.isBreached(anyString())).thenReturn(false);
         authService = new AuthServiceImpl(userRepository, tokenRepository, passwordEncoder, jwtUtil,
                 rateLimitingService, emailService, refreshTokenService, totpService,
-                recoveryCodeRepository, encryptionService, 24L);
+                recoveryCodeRepository, encryptionService, breachCheckService, 24L);
     }
 
     private User verifiedUser() {
@@ -84,6 +86,18 @@ class AuthServiceImplTest {
         verify(userRepository).save(argThat(u -> !u.isEnabled()));
         verify(tokenRepository).save(any(VerificationToken.class));
         verify(emailService).sendVerificationEmail(eq("alice@example.com"), anyString());
+    }
+
+    @Test
+    void register_breachedPassword_throwsBadRequestAndDoesNothing() {
+        when(breachCheckService.isBreached("StrongP@ss1")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.register(
+                new RegisterRequest("alice", "alice@example.com", "StrongP@ss1")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("data breaches");
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(emailService);
     }
 
     @Test
