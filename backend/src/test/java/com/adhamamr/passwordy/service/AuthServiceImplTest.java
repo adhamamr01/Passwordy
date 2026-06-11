@@ -4,6 +4,7 @@ import com.adhamamr.passwordy.dto.AuthResponse;
 import com.adhamamr.passwordy.dto.ForgotPasswordRequest;
 import com.adhamamr.passwordy.dto.LoginRequest;
 import com.adhamamr.passwordy.dto.MessageResponse;
+import com.adhamamr.passwordy.dto.RefreshRequest;
 import com.adhamamr.passwordy.dto.RegisterRequest;
 import com.adhamamr.passwordy.dto.ResetPasswordRequest;
 import com.adhamamr.passwordy.model.TokenPurpose;
@@ -43,6 +44,7 @@ class AuthServiceImplTest {
     @Mock JwtUtil jwtUtil;
     @Mock RateLimitingService rateLimitingService;
     @Mock EmailService emailService;
+    @Mock RefreshTokenService refreshTokenService;
 
     private AuthServiceImpl authService;
 
@@ -51,7 +53,7 @@ class AuthServiceImplTest {
         when(passwordEncoder.encode(anyString())).thenReturn("$hashed$");
         lenient().when(rateLimitingService.tryConsumeLogin(anyString())).thenReturn(true);
         authService = new AuthServiceImpl(userRepository, tokenRepository, passwordEncoder, jwtUtil,
-                rateLimitingService, emailService, 24L);
+                rateLimitingService, emailService, refreshTokenService, 24L);
     }
 
     private User verifiedUser() {
@@ -187,6 +189,7 @@ class AuthServiceImplTest {
         assertThat(user.getMasterPasswordHash()).isEqualTo("$argon2new$");
         assertThat(user.isEnabled()).isTrue();
         verify(tokenRepository).delete(token);
+        verify(refreshTokenService).revokeAll(user); // reset ends all existing sessions
     }
 
     @Test
@@ -230,16 +233,39 @@ class AuthServiceImplTest {
     // --- login ---
 
     @Test
-    void login_verifiedCredentials_returnsToken() {
+    void login_verifiedCredentials_returnsAccessAndRefreshTokens() {
         User user = verifiedUser();
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("StrongP@ss1", "$hashed$")).thenReturn(true);
         when(passwordEncoder.upgradeEncoding("$hashed$")).thenReturn(false);
         when(jwtUtil.generateToken("alice")).thenReturn("jwt-token");
+        when(refreshTokenService.issue(user)).thenReturn("refresh-xyz");
 
         AuthResponse response = authService.login(new LoginRequest("alice", "StrongP@ss1"));
 
         assertThat(response.token()).isEqualTo("jwt-token");
+        assertThat(response.refreshToken()).isEqualTo("refresh-xyz");
+    }
+
+    @Test
+    void refresh_validToken_rotatesAndIssuesNewPair() {
+        User user = verifiedUser();
+        when(refreshTokenService.rotate("old-refresh")).thenReturn(user);
+        when(jwtUtil.generateToken("alice")).thenReturn("new-access");
+        when(refreshTokenService.issue(user)).thenReturn("new-refresh");
+
+        AuthResponse response = authService.refresh(new RefreshRequest("old-refresh"));
+
+        assertThat(response.token()).isEqualTo("new-access");
+        assertThat(response.refreshToken()).isEqualTo("new-refresh");
+    }
+
+    @Test
+    void logout_revokesRefreshToken() {
+        MessageResponse response = authService.logout(new RefreshRequest("rt"));
+
+        assertThat(response.message()).contains("Logged out");
+        verify(refreshTokenService).revoke("rt");
     }
 
     @Test

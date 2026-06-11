@@ -1,6 +1,8 @@
 package com.adhamamr.passwordy.data.network
 
+import android.content.Context
 import com.adhamamr.passwordy.BuildConfig
+import com.adhamamr.passwordy.data.local.TokenManager
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -8,18 +10,26 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 /**
- * Singleton Retrofit/OkHttp setup exposing the lazily-built [api].
+ * Singleton Retrofit/OkHttp setup. [init] must be called once (from the Application) with a
+ * context so the auth layer can reach [TokenManager].
  *
- * [BASE_URL] defaults to `10.0.2.2` — the Android emulator's alias for the host machine's
- * `localhost`. For a physical device, change it to the host's LAN IP (e.g. 192.168.x.x).
+ * Two clients are built: a plain one used only for token refresh (no authenticator, so it can't
+ * recurse on 401), and the main [api] which attaches the access token ([AuthInterceptor]) and
+ * silently refreshes it on 401 ([TokenAuthenticator]).
+ *
+ * [BASE_URL] defaults to `10.0.2.2` — the Android emulator's alias for the host's `localhost`.
  */
 object RetrofitInstance {
 
     private const val BASE_URL = "http://10.0.2.2:8080/"
 
+    private lateinit var tokenManager: TokenManager
+
+    fun init(context: Context) {
+        tokenManager = TokenManager(context.applicationContext)
+    }
+
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        // Bodies carry master passwords, decrypted secrets, and bearer tokens — never log them
-        // in release builds. Full bodies are visible only in debug builds.
         level = if (BuildConfig.DEBUG) {
             HttpLoggingInterceptor.Level.BODY
         } else {
@@ -27,19 +37,28 @@ object RetrofitInstance {
         }
     }
 
-    private val client = OkHttpClient.Builder()
+    private fun baseClientBuilder(): OkHttpClient.Builder = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
+
+    private fun retrofit(client: OkHttpClient): Retrofit = Retrofit.Builder()
+        .baseUrl(BASE_URL)
+        .client(client)
+        .addConverterFactory(GsonConverterFactory.create())
         .build()
 
+    /** Plain client used only for /api/auth/refresh — no auth interceptor/authenticator. */
+    private val refreshApi: ApiService by lazy {
+        retrofit(baseClientBuilder().build()).create(ApiService::class.java)
+    }
+
     val api: ApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
+        val client = baseClientBuilder()
+            .addInterceptor(AuthInterceptor(tokenManager))
+            .authenticator(TokenAuthenticator(tokenManager, refreshApi))
             .build()
-            .create(ApiService::class.java)
+        retrofit(client).create(ApiService::class.java)
     }
 }

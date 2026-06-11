@@ -54,6 +54,7 @@ public class JwtUtil {
         return extractClaim(token, Claims::getExpiration).before(new Date());
     }
 
+    /** Mints a short-lived access token; subject is the username, expiry from {@code jwt.expiration}. */
     public String generateToken(String username) {
         long now = System.currentTimeMillis();
         return Jwts.builder()

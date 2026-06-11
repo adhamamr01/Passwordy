@@ -7,7 +7,8 @@
 # JWT Configuration
 # Generate a key:  openssl rand -base64 64
 jwt.secret=<GENERATE_A_BASE64_JWT_SECRET>
-jwt.expiration=86400000
+jwt.expiration=900000
+auth.refresh-ttl-days=30
 
 # Server Configuration
 server.port=8080

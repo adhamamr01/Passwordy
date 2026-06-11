@@ -36,9 +36,8 @@ fun PasswordDetailScreen(
     context: Context = LocalContext.current
 ) {
     // Setup ViewModel
-    val tokenManager = remember { TokenManager(context) }
     val apiService = RetrofitInstance.api
-    val repository = remember { PasswordRepository(apiService, tokenManager) }
+    val repository = remember { PasswordRepository(apiService) }
     val viewModel: PasswordViewModel = viewModel(
         factory = PasswordViewModelFactory(repository)
     )

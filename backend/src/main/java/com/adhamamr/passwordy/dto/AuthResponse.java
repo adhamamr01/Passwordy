@@ -1,9 +1,10 @@
 package com.adhamamr.passwordy.dto;
 
 /**
- * Returned on successful register or login. {@code token} is a signed JWT the client must
- * include as {@code Authorization: Bearer <token>} on all protected requests.
- * {@code message} is a human-readable status string, not intended for programmatic use.
+ * Returned on successful login or token refresh. {@code token} is a short-lived access JWT the
+ * client sends as {@code Authorization: Bearer <token>}; {@code refreshToken} is the long-lived
+ * opaque token used at {@code /api/auth/refresh} to obtain a new access token (and at
+ * {@code /api/auth/logout} to revoke the session). {@code message} is human-readable status.
  */
-public record AuthResponse(String token, String username, String email, String message) {
+public record AuthResponse(String token, String refreshToken, String username, String email, String message) {
 }

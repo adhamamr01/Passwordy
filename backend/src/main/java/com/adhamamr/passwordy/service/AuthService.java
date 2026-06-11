@@ -4,6 +4,7 @@ import com.adhamamr.passwordy.dto.AuthResponse;
 import com.adhamamr.passwordy.dto.ForgotPasswordRequest;
 import com.adhamamr.passwordy.dto.LoginRequest;
 import com.adhamamr.passwordy.dto.MessageResponse;
+import com.adhamamr.passwordy.dto.RefreshRequest;
 import com.adhamamr.passwordy.dto.RegisterRequest;
 import com.adhamamr.passwordy.dto.ResetPasswordRequest;
 
@@ -28,4 +29,10 @@ public interface AuthService {
 
     /** Re-sends a verification email if the account exists and is unverified. Generic ack. */
     MessageResponse resendVerification(ForgotPasswordRequest request);
+
+    /** Exchanges a valid refresh token for a new access token + rotated refresh token. */
+    AuthResponse refresh(RefreshRequest request);
+
+    /** Revokes the given refresh token (logout). */
+    MessageResponse logout(RefreshRequest request);
 }

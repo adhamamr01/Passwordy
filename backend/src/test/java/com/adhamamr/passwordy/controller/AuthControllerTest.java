@@ -91,9 +91,9 @@ class AuthControllerTest {
     }
 
     @Test
-    void login_validCredentials_returns200WithToken() throws Exception {
+    void login_validCredentials_returns200WithAccessAndRefreshTokens() throws Exception {
         when(authService.login(any())).thenReturn(
-                new AuthResponse("jwt-token", "alice", "alice@example.com", "Login successful"));
+                new AuthResponse("jwt-token", "refresh-tok", "alice", "alice@example.com", "Login successful"));
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -101,7 +101,42 @@ class AuthControllerTest {
                                 "username", "alice",
                                 "masterPassword", "StrongP@ss1"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("jwt-token"));
+                .andExpect(jsonPath("$.token").value("jwt-token"))
+                .andExpect(jsonPath("$.refreshToken").value("refresh-tok"));
+    }
+
+    @Test
+    void refresh_validToken_returns200WithNewTokens() throws Exception {
+        when(authService.refresh(any())).thenReturn(
+                new AuthResponse("new-access", "new-refresh", "alice", "alice@example.com", "Token refreshed"));
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("refreshToken", "old-refresh"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("new-access"))
+                .andExpect(jsonPath("$.refreshToken").value("new-refresh"));
+    }
+
+    @Test
+    void refresh_invalidToken_returns401() throws Exception {
+        when(authService.refresh(any())).thenThrow(new InvalidCredentialsException("Invalid or expired refresh token"));
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("refreshToken", "bad"))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void logout_returns200() throws Exception {
+        when(authService.logout(any())).thenReturn(new MessageResponse("Logged out."));
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("refreshToken", "rt"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Logged out."));
     }
 
     @Test

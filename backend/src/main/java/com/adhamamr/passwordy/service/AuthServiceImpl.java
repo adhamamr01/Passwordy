@@ -4,6 +4,7 @@ import com.adhamamr.passwordy.dto.AuthResponse;
 import com.adhamamr.passwordy.dto.ForgotPasswordRequest;
 import com.adhamamr.passwordy.dto.LoginRequest;
 import com.adhamamr.passwordy.dto.MessageResponse;
+import com.adhamamr.passwordy.dto.RefreshRequest;
 import com.adhamamr.passwordy.dto.RegisterRequest;
 import com.adhamamr.passwordy.dto.ResetPasswordRequest;
 import com.adhamamr.passwordy.exception.BadRequestException;
@@ -56,6 +57,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
     private final RateLimitingService rateLimitingService;
     private final EmailService emailService;
+    private final RefreshTokenService refreshTokenService;
     private final Duration tokenTtl;
 
     /**
@@ -71,6 +73,7 @@ public class AuthServiceImpl implements AuthService {
                            JwtUtil jwtUtil,
                            RateLimitingService rateLimitingService,
                            EmailService emailService,
+                           RefreshTokenService refreshTokenService,
                            @Value("${app.verification.token-ttl-hours:24}") long tokenTtlHours) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
@@ -78,8 +81,15 @@ public class AuthServiceImpl implements AuthService {
         this.jwtUtil = jwtUtil;
         this.rateLimitingService = rateLimitingService;
         this.emailService = emailService;
+        this.refreshTokenService = refreshTokenService;
         this.tokenTtl = Duration.ofHours(tokenTtlHours);
         this.dummyHash = passwordEncoder.encode("timing-guard-not-a-real-password");
+    }
+
+    private AuthResponse issueTokens(User user, String message) {
+        String accessToken = jwtUtil.generateToken(user.getUsername());
+        String refreshToken = refreshTokenService.issue(user);
+        return new AuthResponse(accessToken, refreshToken, user.getUsername(), user.getEmail(), message);
     }
 
     @Override
@@ -149,6 +159,7 @@ public class AuthServiceImpl implements AuthService {
         user.setEnabled(true); // a successful reset proves control of the email
         userRepository.save(user);
         tokenRepository.delete(token);
+        refreshTokenService.revokeAll(user); // end every existing session after a reset
 
         return new MessageResponse("Your master password has been reset. You can now log in.");
     }
@@ -214,7 +225,20 @@ public class AuthServiceImpl implements AuthService {
             userRepository.save(user);
         }
 
-        String token = jwtUtil.generateToken(user.getUsername());
-        return new AuthResponse(token, user.getUsername(), user.getEmail(), "Login successful");
+        return issueTokens(user, "Login successful");
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse refresh(RefreshRequest request) {
+        User user = refreshTokenService.rotate(request.refreshToken());
+        return issueTokens(user, "Token refreshed");
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse logout(RefreshRequest request) {
+        refreshTokenService.revoke(request.refreshToken());
+        return new MessageResponse("Logged out.");
     }
 }

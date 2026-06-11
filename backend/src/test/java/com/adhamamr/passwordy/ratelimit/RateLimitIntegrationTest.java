@@ -44,7 +44,7 @@ class RateLimitIntegrationTest {
     @Test
     void authTier_blocksAfterCapacity() throws Exception {
         when(authService.login(any())).thenReturn(
-                new AuthResponse("token", "alice", "alice@example.com", "Login successful"));
+                new AuthResponse("token", "refresh", "alice", "alice@example.com", "Login successful"));
 
         String body = objectMapper.writeValueAsString(Map.of(
                 "username", "alice", "masterPassword", "StrongP@ss1"));

@@ -4,6 +4,7 @@ import com.adhamamr.passwordy.data.model.AuthResponse
 import com.adhamamr.passwordy.data.model.ForgotPasswordRequest
 import com.adhamamr.passwordy.data.model.LoginRequest
 import com.adhamamr.passwordy.data.model.MessageResponse
+import com.adhamamr.passwordy.data.model.RefreshRequest
 import com.adhamamr.passwordy.data.model.RegisterRequest
 import com.adhamamr.passwordy.data.model.ResetPasswordRequest
 import com.adhamamr.passwordy.data.network.RetrofitInstance
@@ -30,5 +31,10 @@ class AuthRepository {
 
     suspend fun resetPassword(token: String, newPassword: String): Response<MessageResponse> {
         return api.resetPassword(ResetPasswordRequest(token, newPassword))
+    }
+
+    /** Revokes the refresh token server-side (logout). Best-effort; the caller still clears locally. */
+    suspend fun logout(refreshToken: String): Response<MessageResponse> {
+        return api.logout(RefreshRequest(refreshToken))
     }
 }

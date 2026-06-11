@@ -23,14 +23,30 @@ class TokenManager(private val context: Context) {
 
     companion object {
         private val TOKEN_KEY = stringPreferencesKey("jwt_token")
+        private val REFRESH_KEY = stringPreferencesKey("refresh_token")
         private val USERNAME_KEY = stringPreferencesKey("username")
     }
 
-    // Save token (encrypted via the Android Keystore before it touches disk)
+    // Save access token (encrypted via the Android Keystore before it touches disk)
     suspend fun saveToken(token: String) {
         val encrypted = TokenCrypto.encrypt(token)
         context.dataStore.edit { preferences ->
             preferences[TOKEN_KEY] = encrypted
+        }
+    }
+
+    // Save refresh token (also Keystore-encrypted at rest)
+    suspend fun saveRefreshToken(refreshToken: String) {
+        val encrypted = TokenCrypto.encrypt(refreshToken)
+        context.dataStore.edit { preferences ->
+            preferences[REFRESH_KEY] = encrypted
+        }
+    }
+
+    // Get refresh token as Flow (decrypted on read; null if absent or undecryptable)
+    val refreshToken: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[REFRESH_KEY]?.let { stored ->
+            runCatching { TokenCrypto.decrypt(stored) }.getOrNull()
         }
     }
 
