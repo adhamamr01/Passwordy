@@ -32,6 +32,14 @@ public class User {
     @Column(nullable = false)
     private boolean enabled = false;
 
+    /** Whether TOTP two-factor login is active for this account. */
+    @Column(nullable = false)
+    private boolean totpEnabled = false;
+
+    /** The TOTP shared secret, AES-encrypted at rest; null when 2FA isn't set up. */
+    @Column
+    private String totpSecret;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 

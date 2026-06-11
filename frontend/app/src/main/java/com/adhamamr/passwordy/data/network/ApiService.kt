@@ -30,6 +30,18 @@ interface ApiService {
     @POST("api/auth/logout")
     suspend fun logout(@Body request: RefreshRequest): Response<MessageResponse>
 
+    @POST("api/auth/2fa/verify")
+    suspend fun verifyTwoFactor(@Body request: TwoFactorVerifyRequest): Response<AuthResponse>
+
+    @POST("api/account/2fa/setup")
+    suspend fun setupTotp(): Response<TotpSetupResponse>
+
+    @POST("api/account/2fa/enable")
+    suspend fun enableTotp(@Body request: TotpCodeRequest): Response<TotpEnableResponse>
+
+    @POST("api/account/2fa/disable")
+    suspend fun disableTotp(@Body request: TotpCodeRequest): Response<MessageResponse>
+
     @POST("api/password/generate")
     suspend fun generatePassword(@Body request: PasswordGenerationRequest): Response<GeneratedPasswordResponse>
 

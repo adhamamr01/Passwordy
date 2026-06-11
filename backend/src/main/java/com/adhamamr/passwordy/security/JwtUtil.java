@@ -65,6 +65,29 @@ public class JwtUtil {
                 .compact();
     }
 
+    private static final long TWO_FACTOR_VALIDITY_MS = 5 * 60 * 1000;
+
+    /** A 5-minute token marking "password verified, awaiting 2FA" — exchanged at /2fa/verify. */
+    public String generateTwoFactorToken(String username) {
+        long now = System.currentTimeMillis();
+        return Jwts.builder()
+                .subject(username)
+                .claim("twofa", true)
+                .issuedAt(new Date(now))
+                .expiration(new Date(now + TWO_FACTOR_VALIDITY_MS))
+                .signWith(signingKey)
+                .compact();
+    }
+
+    /** True if {@code token} is a valid (signed, unexpired) 2FA-pending token. */
+    public boolean isTwoFactorToken(String token) {
+        try {
+            return Boolean.TRUE.equals(extractClaim(token, claims -> claims.get("twofa", Boolean.class)));
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
     /**
      * Returns true only if the token's subject matches {@code username} and the token has
      * not expired. Callers pass the username resolved from their own user store, so a token

@@ -63,12 +63,13 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.value = AuthUiState.Loading
             try {
                 val response = repository.login(username, masterPassword)
-                if (response.isSuccessful && response.body() != null) {
-                    val body = response.body()!!
-                    tokenManager.saveToken(body.token)
-                    body.refreshToken?.let { tokenManager.saveRefreshToken(it) }
-                    tokenManager.saveUsername(body.username)
-                    _uiState.value = AuthUiState.Success(body.message)
+                val body = response.body()
+                if (response.isSuccessful && body != null) {
+                    if (body.twoFactorRequired && body.twoFactorToken != null) {
+                        _uiState.value = AuthUiState.TwoFactorRequired(body.twoFactorToken)
+                    } else {
+                        persistAndSucceed(body)
+                    }
                 } else {
                     // Surfaces backend messages like "Please verify your email before logging in".
                     _uiState.value = AuthUiState.Error(parseError(response, "Login failed"))
@@ -77,6 +78,31 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value = AuthUiState.Error(e.message ?: "Network error")
             }
         }
+    }
+
+    /** Login step 2: submit the TOTP / recovery code with the challenge token from step 1. */
+    fun verifyTwoFactor(twoFactorToken: String, code: String) {
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            try {
+                val response = repository.verifyTwoFactor(twoFactorToken, code)
+                val body = response.body()
+                if (response.isSuccessful && body != null) {
+                    persistAndSucceed(body)
+                } else {
+                    _uiState.value = AuthUiState.Error(parseError(response, "Invalid code"))
+                }
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(e.message ?: "Network error")
+            }
+        }
+    }
+
+    private suspend fun persistAndSucceed(body: com.adhamamr.passwordy.data.model.AuthResponse) {
+        body.token?.let { tokenManager.saveToken(it) }
+        body.refreshToken?.let { tokenManager.saveRefreshToken(it) }
+        tokenManager.saveUsername(body.username)
+        _uiState.value = AuthUiState.Success(body.message)
     }
 
     /** Extracts the {"error": "..."} message from an error response body, falling back if absent. */
@@ -99,5 +125,7 @@ sealed class AuthUiState {
     object Loading : AuthUiState()
     data class Success(val message: String) : AuthUiState()
     data class Registered(val message: String) : AuthUiState()
+    /** Login passed the password step but needs a 2FA code; carries the challenge token. */
+    data class TwoFactorRequired(val twoFactorToken: String) : AuthUiState()
     data class Error(val message: String) : AuthUiState()
 }

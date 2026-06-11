@@ -7,6 +7,7 @@ import com.adhamamr.passwordy.dto.MessageResponse;
 import com.adhamamr.passwordy.dto.RefreshRequest;
 import com.adhamamr.passwordy.dto.RegisterRequest;
 import com.adhamamr.passwordy.dto.ResetPasswordRequest;
+import com.adhamamr.passwordy.dto.TwoFactorVerifyRequest;
 import com.adhamamr.passwordy.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -68,5 +69,10 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<MessageResponse> logout(@Valid @RequestBody RefreshRequest request) {
         return ResponseEntity.ok(authService.logout(request));
+    }
+
+    @PostMapping("/2fa/verify")
+    public ResponseEntity<AuthResponse> verifyTwoFactor(@Valid @RequestBody TwoFactorVerifyRequest request) {
+        return ResponseEntity.ok(authService.verifyTwoFactor(request));
     }
 }

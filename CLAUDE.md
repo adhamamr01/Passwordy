@@ -37,7 +37,10 @@ authorization) lives in the backend.
   (`RefreshToken`, stored as a SHA-256 hash). `/api/auth/refresh` rotates it, `/api/auth/logout`
   revokes it, and a password reset revokes all of a user's refresh tokens. The Android client
   refreshes silently via an OkHttp `Authenticator` (`TokenAuthenticator`) + `AuthInterceptor`.
-  `JwtAuthenticationFilter` populates the security context;
+  Optional **TOTP 2FA** (`TotpService`, opt-in): when enabled, login returns a challenge +
+  short-lived 2FA token, exchanged with a code at `/api/auth/2fa/verify`; the secret is
+  AES-encrypted and one-time recovery codes (hashed) are issued at enrolment. Management lives
+  under authenticated `/api/account/2fa/**`. `JwtAuthenticationFilter` populates the security context;
   `SecurityConfig` permits `/api/auth/**` and `/api/password/generate(-pin)` and authenticates
   the rest. Master passwords are BCrypt-hashed; stored passwords are AES-256-GCM encrypted
   (fresh IV per entry) and only decrypted on the explicit `/api/passwords/{id}/decrypt` route.
