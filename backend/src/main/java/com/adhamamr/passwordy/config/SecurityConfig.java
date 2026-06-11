@@ -51,6 +51,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // CSRF protection is intentionally disabled: this is a stateless API
+                // (SessionCreationPolicy.STATELESS) authenticated by a bearer JWT in the
+                // Authorization header, not by cookies. CSRF requires the browser to auto-attach
+                // ambient credentials (cookies) to a forged cross-site request — there are none
+                // here, so there is nothing to forge. (CodeQL java/spring-disabled-csrf-protection
+                // is a false positive for header-token APIs.)
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()  // register/login
