@@ -54,9 +54,14 @@ authorization) lives in the backend.
 ## Environment notes (these bit us — save yourself the trouble)
 - **JDK 25 required.** If `./mvnw` can't launch a JVM, your `JAVA_HOME` is likely broken; point
   it at a working JDK 25 (on this machine: `C:\Program Files\Java\jdk-25.0.2`).
-- **Tests run on H2, not Testcontainers.** A Testcontainers/PostgreSQL test was reverted because
-  the docker-java client in current Testcontainers (≤1.21.4) cannot talk to Docker Engine 29.x.
-  Don't reintroduce it until Testcontainers supports Docker 29 (see DECISIONS.md §10).
+- **Tests run on H2 by default; one guarded Testcontainers test adds PostgreSQL parity.**
+  `PostgresIntegrationTest` uses a real Postgres container via `@ServiceConnection` but is
+  annotated `@Testcontainers(disabledWithoutDocker = true)`, so it **skips** when no usable
+  Docker client is found and the default suite still needs nothing installed. docker-java in the
+  current Testcontainers (1.21.3, latest) **still can't talk to Docker Engine 29.x** (its
+  `/info` returns 400 even with the right pipe + pinned `DOCKER_API_VERSION`), so it skips on a
+  Docker-29 host but runs for real on CI (compatible Docker). Don't be surprised by "Skipped: 1"
+  locally — that's expected; CI runs it (see DECISIONS.md §10).
 - Prefer the wrappers (`./mvnw`, `./gradlew`) over IDE-launched Maven — the IDE Maven
   integration has been flaky here.
 
