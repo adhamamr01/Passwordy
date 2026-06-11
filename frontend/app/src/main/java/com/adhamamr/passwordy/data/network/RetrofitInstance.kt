@@ -1,5 +1,6 @@
 package com.adhamamr.passwordy.data.network
 
+import com.adhamamr.passwordy.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -17,7 +18,13 @@ object RetrofitInstance {
     private const val BASE_URL = "http://10.0.2.2:8080/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        // Bodies carry master passwords, decrypted secrets, and bearer tokens — never log them
+        // in release builds. Full bodies are visible only in debug builds.
+        level = if (BuildConfig.DEBUG) {
+            HttpLoggingInterceptor.Level.BODY
+        } else {
+            HttpLoggingInterceptor.Level.NONE
+        }
     }
 
     private val client = OkHttpClient.Builder()

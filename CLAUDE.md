@@ -75,6 +75,12 @@ authorization) lives in the backend.
   shared store (e.g. Redis) is needed before horizontal scaling.
 - **Registration enumeration:** `register` reveals "username/email already exists"; the planned
   fix is an email-verification flow (DECISIONS.md §7).
+- **Android client hardening:** body logging is gated to debug builds, cleartext HTTP is blocked
+  except for local dev hosts (`network_security_config.xml`), and `allowBackup=false`
+  (DECISIONS.md §11). The H2 console ships **disabled** (`spring.h2.console.enabled=false`).
+  Still open: the on-device JWT lives in a plain DataStore (move to Keystore/
+  `EncryptedSharedPreferences`), and the frontend can't be built/tested in CI because its Gradle
+  wrapper + version catalog aren't committed.
 
 ## Docs
 - `README.md` — overview & quick start

@@ -223,8 +223,10 @@ changed to the host's LAN IP.
 ## 10. Persistence profiles
 
 - **Default (`application.properties`):** in-memory **H2** — zero-setup, and what the test
-  suite runs against; data is wiped on restart. The H2 console is *not* reachable: the
-  security config authenticates every non-public route, so the console route is blocked.
+  suite runs against; data is wiped on restart. The H2 console is **disabled**
+  (`spring.h2.console.enabled=false`) so it isn't shipped as attack surface; it was also
+  already unreachable because the security config authenticates every non-public route.
+  Re-enable locally only when needed (`-Dspring.h2.console.enabled=true`).
 - **`docker` profile (recommended for real runs):** **PostgreSQL** via
   `backend/docker-compose.yml` (`docker compose up -d`), configured through the gitignored
   `application-docker.properties` (copy from the committed `.example`; see `SETUP.md`).
@@ -240,3 +242,28 @@ app under the `docker`/`local` profiles.
 > The PostgreSQL JDBC driver (`org.postgresql:postgresql`) was previously missing from
 > `pom.xml` — the `docker`/`local` profiles could not actually have connected without it. It
 > was added (runtime scope) alongside the Testcontainers work.
+
+---
+
+## 11. Android client hardening
+
+The Android app is a thin client, but it still handles the master password, decrypted secrets,
+and the bearer token on-device, so three defaults were tightened:
+
+- **No body logging in release.** `RetrofitInstance`'s `HttpLoggingInterceptor` previously ran
+  at `Level.BODY` unconditionally, writing master passwords (login/register), decrypted
+  passwords, and JWTs to logcat — readable by other tooling and captured in bug reports. It is
+  now gated on `BuildConfig.DEBUG`: full bodies in debug, `Level.NONE` in release. (`buildConfig`
+  was enabled in `app/build.gradle.kts` to expose the flag.)
+- **Cleartext blocked except for dev hosts.** `usesCleartextTraffic` was `true`. It is now
+  `false`, backed by `res/xml/network_security_config.xml` that permits cleartext **only** to
+  `10.0.2.2` / `localhost` / `127.0.0.1` (local development against the HTTP backend) and
+  requires TLS everywhere else. Serving the backend over HTTPS is still required before any
+  non-local deployment.
+- **Backups disabled.** `allowBackup` was `true` with empty rules, so the DataStore holding the
+  JWT could be copied out via cloud backup or `adb backup`. It is now `false`.
+
+**Follow-up (not yet done):** the JWT is stored in a plain Jetpack DataStore. Moving it to
+`EncryptedSharedPreferences` / the Android Keystore would protect it at rest on a compromised
+device. Deferred because the frontend Gradle wrapper and version catalog are not committed, so
+the module currently can't be built or tested (tracked separately).
