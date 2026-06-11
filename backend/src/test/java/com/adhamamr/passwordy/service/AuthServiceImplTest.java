@@ -2,12 +2,16 @@ package com.adhamamr.passwordy.service;
 
 import com.adhamamr.passwordy.dto.AuthResponse;
 import com.adhamamr.passwordy.dto.LoginRequest;
+import com.adhamamr.passwordy.dto.MessageResponse;
 import com.adhamamr.passwordy.dto.RegisterRequest;
 import com.adhamamr.passwordy.exception.BadRequestException;
+import com.adhamamr.passwordy.exception.EmailNotVerifiedException;
 import com.adhamamr.passwordy.exception.InvalidCredentialsException;
 import com.adhamamr.passwordy.exception.TooManyRequestsException;
 import com.adhamamr.passwordy.model.User;
+import com.adhamamr.passwordy.model.VerificationToken;
 import com.adhamamr.passwordy.repository.UserRepository;
+import com.adhamamr.passwordy.repository.VerificationTokenRepository;
 import com.adhamamr.passwordy.security.JwtUtil;
 import com.adhamamr.passwordy.security.RateLimitingService;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,84 +21,136 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Instant;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {
 
     @Mock UserRepository userRepository;
+    @Mock VerificationTokenRepository tokenRepository;
     @Mock PasswordEncoder passwordEncoder;
     @Mock JwtUtil jwtUtil;
     @Mock RateLimitingService rateLimitingService;
+    @Mock EmailService emailService;
 
     private AuthServiceImpl authService;
 
     @BeforeEach
     void setUp() {
         when(passwordEncoder.encode(anyString())).thenReturn("$hashed$");
-        // Login is allowed by default; the throttle test overrides this for its username.
         lenient().when(rateLimitingService.tryConsumeLogin(anyString())).thenReturn(true);
-        authService = new AuthServiceImpl(userRepository, passwordEncoder, jwtUtil, rateLimitingService);
+        authService = new AuthServiceImpl(userRepository, tokenRepository, passwordEncoder, jwtUtil,
+                rateLimitingService, emailService, 24L);
+    }
+
+    private User verifiedUser() {
+        User u = new User("alice", "alice@example.com", "$hashed$");
+        u.setEnabled(true);
+        return u;
     }
 
     // --- register ---
 
     @Test
-    void register_validRequest_returnsTokenAndSavesUser() {
+    void register_newAccount_createsDisabledUserAndSendsEmail() {
         when(userRepository.existsByUsername("alice")).thenReturn(false);
         when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
-        User saved = new User("alice", "alice@example.com", "$hashed$");
-        when(userRepository.save(any(User.class))).thenReturn(saved);
-        when(jwtUtil.generateToken("alice")).thenReturn("jwt-token");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        AuthResponse response = authService.register(
+        MessageResponse response = authService.register(
                 new RegisterRequest("alice", "alice@example.com", "StrongP@ss1"));
 
-        assertThat(response.token()).isEqualTo("jwt-token");
-        assertThat(response.username()).isEqualTo("alice");
-        verify(userRepository).save(any(User.class));
+        assertThat(response.message()).contains("verification link");
+        verify(userRepository).save(argThat(u -> !u.isEnabled()));
+        verify(tokenRepository).save(any(VerificationToken.class));
+        verify(emailService).sendVerificationEmail(eq("alice@example.com"), anyString());
     }
 
     @Test
-    void register_weakPassword_throwsBadRequest() {
+    void register_weakPassword_throwsBadRequestAndDoesNothing() {
         assertThatThrownBy(() -> authService.register(
                 new RegisterRequest("alice", "alice@example.com", "weak")))
                 .isInstanceOf(BadRequestException.class);
         verify(userRepository, never()).save(any());
+        verifyNoInteractions(emailService);
     }
 
     @Test
-    void register_duplicateUsername_throwsBadRequest() {
+    void register_existingUsername_returnsGenericAckWithoutLeakingOrCreating() {
         when(userRepository.existsByUsername("alice")).thenReturn(true);
 
-        assertThatThrownBy(() -> authService.register(
-                new RegisterRequest("alice", "alice@example.com", "StrongP@ss1")))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Username");
+        MessageResponse response = authService.register(
+                new RegisterRequest("alice", "alice@example.com", "StrongP@ss1"));
+
+        // Identical to the success message; no account created, no email sent → no oracle.
+        assertThat(response.message()).contains("verification link");
+        verify(userRepository, never()).save(any());
+        verify(tokenRepository, never()).save(any());
+        verifyNoInteractions(emailService);
     }
 
     @Test
-    void register_duplicateEmail_throwsBadRequest() {
+    void register_existingEmail_returnsGenericAckWithoutCreating() {
         when(userRepository.existsByUsername("alice")).thenReturn(false);
         when(userRepository.existsByEmail("alice@example.com")).thenReturn(true);
 
-        assertThatThrownBy(() -> authService.register(
-                new RegisterRequest("alice", "alice@example.com", "StrongP@ss1")))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Email");
+        MessageResponse response = authService.register(
+                new RegisterRequest("alice", "alice@example.com", "StrongP@ss1"));
+
+        assertThat(response.message()).contains("verification link");
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(emailService);
+    }
+
+    // --- verify ---
+
+    @Test
+    void verify_validToken_enablesUserAndConsumesToken() {
+        User user = new User("alice", "alice@example.com", "$hashed$");
+        VerificationToken token = new VerificationToken("tok-123", user, Instant.now().plusSeconds(3600));
+        when(tokenRepository.findByToken("tok-123")).thenReturn(Optional.of(token));
+
+        MessageResponse response = authService.verify("tok-123");
+
+        assertThat(response.message()).contains("verified");
+        assertThat(user.isEnabled()).isTrue();
+        verify(userRepository).save(user);
+        verify(tokenRepository).delete(token);
+    }
+
+    @Test
+    void verify_unknownToken_throwsBadRequest() {
+        when(tokenRepository.findByToken("nope")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.verify("nope"))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void verify_expiredToken_throwsBadRequestAndDeletesToken() {
+        User user = new User("alice", "alice@example.com", "$hashed$");
+        VerificationToken token = new VerificationToken("old", user, Instant.now().minusSeconds(1));
+        when(tokenRepository.findByToken("old")).thenReturn(Optional.of(token));
+
+        assertThatThrownBy(() -> authService.verify("old"))
+                .isInstanceOf(BadRequestException.class);
+        verify(tokenRepository).delete(token);
+        verify(userRepository, never()).save(any());
     }
 
     // --- login ---
 
     @Test
-    void login_validCredentials_returnsToken() {
-        User user = new User("alice", "alice@example.com", "$hashed$");
+    void login_verifiedCredentials_returnsToken() {
+        User user = verifiedUser();
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("StrongP@ss1", "$hashed$")).thenReturn(true);
         when(passwordEncoder.upgradeEncoding("$hashed$")).thenReturn(false);
@@ -103,6 +159,17 @@ class AuthServiceImplTest {
         AuthResponse response = authService.login(new LoginRequest("alice", "StrongP@ss1"));
 
         assertThat(response.token()).isEqualTo("jwt-token");
+    }
+
+    @Test
+    void login_unverifiedAccount_throwsEmailNotVerifiedAfterPasswordCheck() {
+        User user = new User("alice", "alice@example.com", "$hashed$"); // enabled = false
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("StrongP@ss1", "$hashed$")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("alice", "StrongP@ss1")))
+                .isInstanceOf(EmailNotVerifiedException.class);
+        verify(jwtUtil, never()).generateToken(any());
     }
 
     @Test
@@ -120,13 +187,12 @@ class AuthServiceImplTest {
 
         assertThatThrownBy(() -> authService.login(new LoginRequest("ghost", "any")))
                 .isInstanceOf(InvalidCredentialsException.class);
-        // timing guard: encoder must still be called
         verify(passwordEncoder).matches(eq("any"), anyString());
     }
 
     @Test
     void login_wrongPassword_throwsInvalidCredentials() {
-        User user = new User("alice", "alice@example.com", "$hashed$");
+        User user = verifiedUser();
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong", "$hashed$")).thenReturn(false);
 
@@ -136,7 +202,8 @@ class AuthServiceImplTest {
 
     @Test
     void login_outdatedHash_triggersRehash() {
-        User user = new User("alice", "alice@example.com", "$bcrypt$");
+        User user = verifiedUser();
+        user.setMasterPasswordHash("$bcrypt$");
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("StrongP@ss1", "$bcrypt$")).thenReturn(true);
         when(passwordEncoder.upgradeEncoding("$bcrypt$")).thenReturn(true);

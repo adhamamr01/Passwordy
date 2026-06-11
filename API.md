@@ -37,8 +37,9 @@ Errors are returned as `{ "error": "<message>" }` and mapped by `GlobalException
 
 | Status | When |
 |--------|------|
-| `200 OK` | successful read/update/login |
-| `201 Created` | successful register or password save |
+| `200 OK` | successful read/update/login, or email verification |
+| `201 Created` | successful password save |
+| `202 Accepted` | registration accepted — generic acknowledgement; a verification email is sent |
 | `204 No Content` | successful delete |
 | `400 Bad Request` | invalid input — failed validation (`@Valid`), weak master password, duplicate username/email, or out-of-range generation length |
 | `401 Unauthorized` | missing/invalid/expired JWT (`JwtAuthenticationEntryPoint`), or a failed login — wrong username **or** password |
@@ -57,8 +58,9 @@ Errors are returned as `{ "error": "<message>" }` and mapped by `GlobalException
 ## Auth endpoints
 
 ### `POST /api/auth/register`
-Register a new user and receive a JWT. Master password must be ≥8 chars and contain
-upper, lower, digit, and special characters.
+Begin registration. Master password must be ≥8 chars and contain upper, lower, digit, and
+special characters. **No token is returned** — the account is created disabled and a
+verification link is emailed; the user must verify before logging in.
 
 **Request**
 ```json
@@ -69,15 +71,23 @@ upper, lower, digit, and special characters.
 }
 ```
 
-**Response `201 Created`**
+**Response `202 Accepted`** — always the same generic acknowledgement, whether or not the
+username/email was already taken (so the endpoint can't be used to discover existing accounts):
 ```json
-{
-  "token": "eyJhbGciOiJIUzI1NiJ9...",
-  "username": "alice",
-  "email": "alice@example.com",
-  "message": "User registered successfully"
-}
+{ "message": "If that username and email are available, a verification link has been sent. Please check your inbox." }
 ```
+`400` if the master password fails the strength rules.
+
+---
+
+### `GET /api/auth/verify?token=<token>`
+Verify an account using the token from the email link. Enables the account and consumes the token.
+
+**Response `200 OK`**
+```json
+{ "message": "Email verified. You can now log in." }
+```
+`400` if the token is unknown or expired.
 
 ---
 
@@ -89,8 +99,10 @@ Authenticate with username + master password.
 { "username": "alice", "masterPassword": "Str0ng!Pass" }
 ```
 
-**Response `200 OK`** — same `AuthResponse` shape as register, with
-`"message": "Login successful"`.
+**Response `200 OK`** — an `AuthResponse` (token, username, email, message).
+`401` for an unknown username or wrong password (one generic message). `403` if the credentials
+are correct but the email isn't verified yet (*"Please verify your email before logging in"*) —
+returned only after a correct password, so it doesn't reveal whether an account exists.
 
 ---
 

@@ -32,13 +32,9 @@ fun RegisterScreen(
 
     val uiState by viewModel.uiState.collectAsState()
 
-    // Handle success
-    LaunchedEffect(uiState) {
-        if (uiState is AuthUiState.Success) {
-            onRegisterSuccess()
-            viewModel.resetState()
-        }
-    }
+    // Registration no longer logs in — the user must verify by email first. We show a
+    // confirmation here; onRegisterSuccess is retained for any future auto-login path.
+    val registered = uiState as? AuthUiState.Registered
 
     Scaffold(
         topBar = {
@@ -193,6 +189,23 @@ fun RegisterScreen(
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium
                 )
+            }
+
+            // Registration acknowledged — tell the user to verify by email, then go back to login.
+            if (registered != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = registered.message,
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(onClick = {
+                    viewModel.resetState()
+                    onNavigateBack()
+                }) {
+                    Text("Back to login")
+                }
             }
         }
     }

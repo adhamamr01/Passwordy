@@ -37,3 +37,15 @@ logging.level.com.adhamamr.passwordy=DEBUG
 # Encryption key for AES-256 (Base64-encoded 256-bit key)
 # Generate a key:  openssl rand -base64 32
 encryption.secret.key=<GENERATE_A_BASE64_AES_256_KEY>
+
+# Email (verification links). Use a real SMTP server in production.
+spring.mail.host=<SMTP_HOST>
+spring.mail.port=587
+spring.mail.username=<SMTP_USERNAME>
+spring.mail.password=<SMTP_PASSWORD>
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+app.mail.from=no-reply@yourdomain.example
+# Base URL used to build the verification link sent to users:
+app.base-url=https://your-public-host.example
+app.verification.token-ttl-hours=24

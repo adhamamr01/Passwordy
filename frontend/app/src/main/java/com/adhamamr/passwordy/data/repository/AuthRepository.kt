@@ -2,6 +2,7 @@ package com.adhamamr.passwordy.data.repository
 
 import com.adhamamr.passwordy.data.model.AuthResponse
 import com.adhamamr.passwordy.data.model.LoginRequest
+import com.adhamamr.passwordy.data.model.MessageResponse
 import com.adhamamr.passwordy.data.model.RegisterRequest
 import com.adhamamr.passwordy.data.network.RetrofitInstance
 import retrofit2.Response
@@ -11,7 +12,7 @@ class AuthRepository {
 
     private val api = RetrofitInstance.api
 
-    suspend fun register(username: String, email: String, masterPassword: String): Response<AuthResponse> {
+    suspend fun register(username: String, email: String, masterPassword: String): Response<MessageResponse> {
         val request = RegisterRequest(username, email, masterPassword)
         return api.register(request)
     }

@@ -28,6 +28,10 @@ public class User {
     @Column(nullable = false)
     private String masterPasswordHash;
 
+    /** False until the user verifies their email; login is refused until this is true. */
+    @Column(nullable = false)
+    private boolean enabled = false;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
