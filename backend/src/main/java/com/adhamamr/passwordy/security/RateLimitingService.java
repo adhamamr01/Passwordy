@@ -7,15 +7,11 @@ import io.github.bucket4j.ConsumptionProbe;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * In-memory token-bucket store backing the rate-limit filter. One {@link Bucket} is created
- * lazily per (tier, key) pair and reused for that caller's subsequent requests. Buckets live
- * in a {@link ConcurrentHashMap}; this is intentionally process-local — appropriate for a
- * single-instance deployment. A distributed setup would swap this for a shared (e.g. Redis)
- * store without touching the filter.
+ * Token-bucket rate limiting. Resolves one {@link Bucket} per (tier, key) through a
+ * {@link RateLimitBucketProvider} — process-local by default, or Redis-backed (shared across
+ * instances) when {@code ratelimit.store=redis}. The store is invisible here and to the filter.
  */
 @Service
 public class RateLimitingService {
@@ -24,15 +20,16 @@ public class RateLimitingService {
     public enum Tier { AUTH, GENERATION, AUTHENTICATED, LOGIN_USER }
 
     private final RateLimitProperties properties;
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+    private final RateLimitBucketProvider bucketProvider;
 
-    public RateLimitingService(RateLimitProperties properties) {
+    public RateLimitingService(RateLimitProperties properties, RateLimitBucketProvider bucketProvider) {
         this.properties = properties;
+        this.bucketProvider = bucketProvider;
     }
 
     /** Attempts to consume one token for {@code key} under {@code tier}, reporting the outcome. */
     public ConsumptionProbe tryConsume(Tier tier, String key) {
-        Bucket bucket = buckets.computeIfAbsent(tier.name() + ":" + key, ignored -> newBucket(tier));
+        Bucket bucket = bucketProvider.resolve(tier.name() + ":" + key, bandwidthFor(tier));
         return bucket.tryConsumeAndReturnRemaining(1);
     }
 
@@ -48,17 +45,16 @@ public class RateLimitingService {
         return tryConsume(Tier.LOGIN_USER, username).isConsumed();
     }
 
-    private Bucket newBucket(Tier tier) {
+    private Bandwidth bandwidthFor(Tier tier) {
         RateLimitProperties.Limit limit = switch (tier) {
             case AUTH -> properties.getAuth();
             case GENERATION -> properties.getGeneration();
             case AUTHENTICATED -> properties.getAuthenticated();
             case LOGIN_USER -> properties.getLoginPerUser();
         };
-        Bandwidth bandwidth = Bandwidth.builder()
+        return Bandwidth.builder()
                 .capacity(limit.getCapacity())
                 .refillGreedy(limit.getCapacity(), Duration.ofSeconds(limit.getRefillSeconds()))
                 .build();
-        return Bucket.builder().addLimit(bandwidth).build();
     }
 }

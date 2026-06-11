@@ -70,11 +70,22 @@
 			<version>1.80</version>
 		</dependency>
 
-		<!-- Rate limiting (in-memory token buckets) -->
+		<!-- Rate limiting (token buckets) -->
 		<dependency>
 			<groupId>com.bucket4j</groupId>
 			<artifactId>bucket4j_jdk17-core</artifactId>
 			<version>8.14.0</version>
+		</dependency>
+		<!-- Optional distributed store: Bucket4j over Redis (Lettuce). Active only when
+		     ratelimit.store=redis; the default in-memory store needs neither of these. -->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-lettuce</artifactId>
+			<version>8.14.0</version>
+		</dependency>
+		<dependency>
+			<groupId>io.lettuce</groupId>
+			<artifactId>lettuce-core</artifactId>
 		</dependency>
 
 		<!-- JWT -->

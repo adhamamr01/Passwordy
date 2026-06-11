@@ -30,8 +30,18 @@ public class RateLimitProperties {
     private Limit loginPerUser = new Limit(5, 60);
     private List<String> trustedProxies = new ArrayList<>();
 
+    /** Bucket store: {@code memory} (default, process-local) or {@code redis} (shared/distributed). */
+    private String store = "memory";
+    private Redis redis = new Redis();
+
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+
+    public String getStore() { return store; }
+    public void setStore(String store) { this.store = store; }
+
+    public Redis getRedis() { return redis; }
+    public void setRedis(Redis redis) { this.redis = redis; }
 
     public Limit getAuth() { return auth; }
     public void setAuth(Limit auth) { this.auth = auth; }
@@ -47,6 +57,14 @@ public class RateLimitProperties {
 
     public List<String> getTrustedProxies() { return trustedProxies; }
     public void setTrustedProxies(List<String> trustedProxies) { this.trustedProxies = trustedProxies; }
+
+    /** Redis connection for the distributed bucket store (used only when {@code store=redis}). */
+    public static class Redis {
+        private String url = "redis://localhost:6379";
+
+        public String getUrl() { return url; }
+        public void setUrl(String url) { this.url = url; }
+    }
 
     /** A single tier's bucket size ({@code capacity}) and full-refill interval ({@code refillSeconds}). */
     public static class Limit {
