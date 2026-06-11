@@ -14,6 +14,10 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 /**
  * Persists the session JWT and username in Jetpack DataStore so they survive process death.
  * Reads are exposed as [Flow]s; [clearToken] wipes everything on logout.
+ *
+ * The JWT is encrypted at rest with an Android Keystore key (see [TokenCrypto]) — it is never
+ * stored in plaintext. A stored value that fails to decrypt (e.g. left over from an older
+ * plaintext build, or after a key reset) is treated as "no token", forcing a fresh login.
  */
 class TokenManager(private val context: Context) {
 
@@ -22,10 +26,11 @@ class TokenManager(private val context: Context) {
         private val USERNAME_KEY = stringPreferencesKey("username")
     }
 
-    // Save token
+    // Save token (encrypted via the Android Keystore before it touches disk)
     suspend fun saveToken(token: String) {
+        val encrypted = TokenCrypto.encrypt(token)
         context.dataStore.edit { preferences ->
-            preferences[TOKEN_KEY] = token
+            preferences[TOKEN_KEY] = encrypted
         }
     }
 
@@ -36,9 +41,11 @@ class TokenManager(private val context: Context) {
         }
     }
 
-    // Get token as Flow
+    // Get token as Flow (decrypted on read; null if absent or undecryptable)
     val token: Flow<String?> = context.dataStore.data.map { preferences ->
-        preferences[TOKEN_KEY]
+        preferences[TOKEN_KEY]?.let { stored ->
+            runCatching { TokenCrypto.decrypt(stored) }.getOrNull()
+        }
     }
 
     // Get username as Flow

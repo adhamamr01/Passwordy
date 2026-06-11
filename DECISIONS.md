@@ -263,7 +263,15 @@ and the bearer token on-device, so three defaults were tightened:
 - **Backups disabled.** `allowBackup` was `true` with empty rules, so the DataStore holding the
   JWT could be copied out via cloud backup or `adb backup`. It is now `false`.
 
-**Follow-up (not yet done):** the JWT is stored in a plain Jetpack DataStore. Moving it to
-`EncryptedSharedPreferences` / the Android Keystore would protect it at rest on a compromised
-device. Deferred because the frontend Gradle wrapper and version catalog are not committed, so
-the module currently can't be built or tested (tracked separately).
+**Token encrypted at rest.** The JWT was stored in a plain Jetpack DataStore. It is now
+encrypted with an AES-256-GCM key held in the **Android Keystore** (`TokenCrypto`,
+non-exportable, generated per install); `TokenManager` encrypts on write and decrypts on read,
+keeping its `Flow<String?>` API unchanged, and an undecryptable value is treated as "no token"
+(forces re-login). No new dependency — uses the framework Keystore API.
+
+**Build verification caveat.** The frontend Gradle **wrapper and version catalog were missing
+from version control** and have been reconstructed and committed (`gradle/wrapper/*`,
+`gradle/libs.versions.toml`). Gradle **9.3.0** was recovered from the build cache; the **AGP and
+Kotlin versions are inferred** and must be confirmed by a Gradle sync in Android Studio. None of
+the frontend changes in this work could be compiled here (no Android SDK/Gradle in the
+environment), so they are **build-unverified** pending a real sync/build.

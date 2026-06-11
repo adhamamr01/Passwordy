@@ -30,18 +30,19 @@ backend/src/main/resources/application-docker.properties
 *.db
 *.db-journal
 
-# Kotlin/Gradle (for future frontend)
+# Kotlin/Gradle — ignore caches/outputs but COMMIT the wrapper + version catalog
 frontend/.gradle/
 frontend/build/
-frontend/gradle/
-frontend/gradlew
-frontend/gradlew.bat
+frontend/app/build/
+frontend/gradle/.gradle/
 
 # Compiled
 *.class
 *.jar
 *.war
 *.ear
+# …but the Gradle wrapper jar MUST be committed — gradlew can't bootstrap without it.
+!frontend/gradle/wrapper/gradle-wrapper.jar
 
 # Claude Code — commit shared commands/skills, ignore transient/local state
 .claude/worktrees/
