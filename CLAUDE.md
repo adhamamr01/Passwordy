@@ -79,8 +79,11 @@ authorization) lives in the backend.
   and uses `getRemoteAddr()`). The bucket store is **pluggable** behind `RateLimitBucketProvider`:
   in-memory `ConcurrentHashMap` by default (single instance), or **Redis-backed** (shared across
   instances) via `ratelimit.store=redis` + `ratelimit.redis.url` (Bucket4j over Lettuce).
-- **Registration enumeration:** `register` reveals "username/email already exists"; the planned
-  fix is an email-verification flow (DECISIONS.md §7).
+- **Registration enumeration: fixed.** `register` now returns one generic `202` (no token)
+  whether or not the username/email exists, creating a *disabled* account + emailed verification
+  token; `GET /api/auth/verify` enables it, and `login` refuses unverified accounts (only after a
+  correct password, so no oracle). SMTP via `spring.mail.*` + `app.base-url`/`app.mail.from`
+  (`SmtpEmailService`); real creds in the gitignored `application-{local,docker}.properties`.
 - **Android client hardening:** body logging is gated to debug builds, cleartext HTTP is blocked
   except for local dev hosts (`network_security_config.xml`), and `allowBackup=false`
   (DECISIONS.md §11). The H2 console ships **disabled** (`spring.h2.console.enabled=false`).

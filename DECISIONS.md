@@ -150,8 +150,7 @@ duplicate-account failures throw `BadRequestException` (400) rather than a bare 
 `InvalidCredentialsException` carrying one generic message — the API never reveals which
 field was wrong. It also runs a BCrypt comparison against a dummy hash when the username is
 unknown, so the two paths take similar time and **response timing** can't be used to
-enumerate accounts either. (The `register` endpoint still reveals duplicate username/email,
-and brute-force throttling is a separate concern — both are tracked follow-ups.)
+enumerate accounts either. (`register` is now enumeration-safe too — see §13.)
 
 **Ownership failures return 404, not 403.** The single ownership gate
 (`PasswordServiceImpl.findOwnedPassword`, shared by get/update/delete/decrypt/favorite)
@@ -316,3 +315,30 @@ Redis unreachable), logs a warning, and **allows** the request. A rate limiter m
 single point of failure that takes down the whole API; the other defenses (auth, ownership,
 validation) still apply. The accepted trade-off is that limits aren't enforced *during* a store
 outage — favouring availability over strict throttling for what is a rare, transient condition.
+
+---
+
+## 13. Registration: email verification (enumeration-safe)
+
+`register` used to return `201` + a JWT and threw `400 "Username/Email already exists"` on a
+duplicate — a textbook account-enumeration oracle. It now runs an email-verification flow:
+
+- **Always returns the same generic `202`** with no token, whether or not the username/email is
+  taken. A genuinely new account is created **disabled** with a single-use `VerificationToken`
+  (TTL `app.verification.token-ttl-hours`, default 24h), emailed to the address; a duplicate is
+  silently ignored. The responses are byte-for-byte identical, so the endpoint reveals nothing.
+- **`GET /api/auth/verify?token=…`** consumes the token and enables the account.
+- **`login`** checks the password first (with the existing dummy-hash timing guard), then refuses
+  an unverified account with `EmailNotVerifiedException` → **403**. Because that's only reachable
+  after a *correct* password, it can't be used to probe which accounts exist.
+
+Mail goes through `EmailService` (SMTP impl `SmtpEmailService` over Spring `JavaMailSender`,
+`spring.mail.*`); a send failure is logged but doesn't fail registration, keeping the response
+generic. The Android client was updated in step: register no longer logs in — it shows a
+"check your email" confirmation and routes back to login, and login surfaces the 403 verify
+message.
+
+**Trade-off:** weak-master-password still returns `400` (it concerns the *submitted* password,
+not account existence, so it's not an oracle). A real SMTP server is required for the flow to be
+usable in production; the committed profile points at `localhost` so the context starts and sends
+simply fail-and-log until configured.

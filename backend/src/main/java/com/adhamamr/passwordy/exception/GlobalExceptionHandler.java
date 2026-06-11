@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  *   <li>{@link MethodArgumentNotValidException}, {@link BadRequestException},
  *       {@link IllegalArgumentException} → 400</li>
  *   <li>{@link InvalidCredentialsException} → 401 (failed login)</li>
- *   <li>{@link UnauthorizedException} → 403</li>
+ *   <li>{@link UnauthorizedException}, {@link EmailNotVerifiedException} → 403</li>
  *   <li>{@link ResourceNotFoundException} → 404</li>
  *   <li>{@link TooManyRequestsException} → 429 (account-level rate limit)</li>
  *   <li>any other {@link RuntimeException} → 500</li>
@@ -52,8 +52,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", safeMessage(ex)));
     }
 
-    @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<Map<String, String>> handleUnauthorized(UnauthorizedException ex) {
+    @ExceptionHandler({UnauthorizedException.class, EmailNotVerifiedException.class})
+    public ResponseEntity<Map<String, String>> handleForbidden(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", safeMessage(ex)));
     }
 
