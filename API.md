@@ -76,7 +76,8 @@ username/email was already taken (so the endpoint can't be used to discover exis
 ```json
 { "message": "If that username and email are available, a verification link has been sent. Please check your inbox." }
 ```
-`400` if the master password fails the strength rules.
+`400` if the master password fails the strength rules, **or** has appeared in a known data breach
+(checked against Have I Been Pwned via k-anonymity; the check fails open if HIBP is unreachable).
 
 ---
 

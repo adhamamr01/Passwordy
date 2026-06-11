@@ -86,6 +86,10 @@ authorization) lives in the backend.
   and uses `getRemoteAddr()`). The bucket store is **pluggable** behind `RateLimitBucketProvider`:
   in-memory `ConcurrentHashMap` by default (single instance), or **Redis-backed** (shared across
   instances) via `ratelimit.store=redis` + `ratelimit.redis.url` (Bucket4j over Lettuce).
+- **Breached-password block:** `register` and password reset reject a master password found in
+  Have I Been Pwned (`BreachCheckService`, k-anonymity — only a 5-char SHA-1 prefix is sent).
+  **Fails open** if HIBP is unreachable (`breachcheck.enabled`). Returns 400 with a generic
+  "appeared in known data breaches" message.
 - **Registration enumeration: fixed.** `register` now returns one generic `202` (no token)
   whether or not the username/email exists, creating a *disabled* account + emailed verification
   token; `GET /api/auth/verify` enables it, and `login` refuses unverified accounts (only after a

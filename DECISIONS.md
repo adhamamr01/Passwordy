@@ -390,3 +390,22 @@ The management routes sit under `/api/account/**` (authenticated) rather than `/
 
 **Follow-up:** the enrolment screen shows the secret + `otpauth://` URI for manual entry; rendering
 it as an on-screen QR code is a polish item. Recovery-code regeneration isn't exposed yet.
+
+---
+
+## 16. Breached-password block (Have I Been Pwned, k-anonymity)
+
+Registration and password reset reject a master password known to appear in public breach
+corpuses, checked against HIBP **without ever sending the password or its full hash**:
+
+- The password is SHA-1 hashed; **only the first 5 hex chars** are sent to HIBP's range API
+  (`BreachCheckService` → `PwnedRangeClient`). HIBP returns every breached suffix sharing that
+  prefix; the match is done locally. SHA-1 is used purely as HIBP's index — storage is still
+  Argon2id. An `Add-Padding: true` header keeps the response size from hinting at the match count.
+- **Block, not warn:** a positive match throws `BadRequestException` → 400 with a generic
+  "appeared in known data breaches" message (no count, no shaming, points the user to choose
+  another). Applied to the *master* password only (register + reset), not stored vault entries.
+- **Fail-open:** if HIBP can't be reached (2 s timeout, IO error, non-200), the check returns
+  "not breached" and the flow proceeds — a third-party outage must never block sign-up or reset.
+  Toggle via `breachcheck.enabled`. The lookup is wrapped behind `PwnedRangeClient` so the logic
+  is unit-tested without real network.

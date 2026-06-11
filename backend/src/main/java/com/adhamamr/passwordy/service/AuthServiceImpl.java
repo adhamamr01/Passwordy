@@ -74,8 +74,12 @@ public class AuthServiceImpl implements AuthService {
     private final TotpService totpService;
     private final RecoveryCodeRepository recoveryCodeRepository;
     private final EncryptionService encryptionService;
+    private final BreachCheckService breachCheckService;
     private final SecureRandom secureRandom = new SecureRandom();
     private final Duration tokenTtl;
+
+    private static final String BREACHED_PASSWORD_MESSAGE =
+            "This password has appeared in known data breaches — please choose a different one.";
 
     /**
      * A throwaway Argon2id hash used to spend the same time hashing when an unknown username
@@ -94,6 +98,7 @@ public class AuthServiceImpl implements AuthService {
                            TotpService totpService,
                            RecoveryCodeRepository recoveryCodeRepository,
                            EncryptionService encryptionService,
+                           BreachCheckService breachCheckService,
                            @Value("${app.verification.token-ttl-hours:24}") long tokenTtlHours) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
@@ -105,6 +110,7 @@ public class AuthServiceImpl implements AuthService {
         this.totpService = totpService;
         this.recoveryCodeRepository = recoveryCodeRepository;
         this.encryptionService = encryptionService;
+        this.breachCheckService = breachCheckService;
         this.tokenTtl = Duration.ofHours(tokenTtlHours);
         this.dummyHash = passwordEncoder.encode("timing-guard-not-a-real-password");
     }
@@ -123,6 +129,9 @@ public class AuthServiceImpl implements AuthService {
                 MasterPasswordValidator.validate(request.masterPassword());
         if (!validation.isValid()) {
             throw new BadRequestException(validation.getErrorMessage());
+        }
+        if (breachCheckService.isBreached(request.masterPassword())) {
+            throw new BadRequestException(BREACHED_PASSWORD_MESSAGE);
         }
 
         // Enumeration-safe: a taken username/email yields the same generic response as success,
@@ -175,6 +184,9 @@ public class AuthServiceImpl implements AuthService {
                 MasterPasswordValidator.validate(request.newPassword());
         if (!validation.isValid()) {
             throw new BadRequestException(validation.getErrorMessage());
+        }
+        if (breachCheckService.isBreached(request.newPassword())) {
+            throw new BadRequestException(BREACHED_PASSWORD_MESSAGE);
         }
 
         VerificationToken token = consumeToken(request.token(), TokenPurpose.PASSWORD_RESET);
