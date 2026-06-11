@@ -78,7 +78,7 @@
 		<dependency>
 			<groupId>com.bucket4j</groupId>
 			<artifactId>bucket4j_jdk17-core</artifactId>
-			<version>8.14.0</version>
+			<version>8.19.0</version>
 		</dependency>
 		<!-- Optional distributed store: Bucket4j over Redis (Lettuce). Active only when
 		     ratelimit.store=redis; the default in-memory store needs neither of these. -->
