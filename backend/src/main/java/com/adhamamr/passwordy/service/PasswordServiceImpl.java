@@ -5,7 +5,6 @@ import com.adhamamr.passwordy.dto.PasswordResponse;
 import com.adhamamr.passwordy.model.Password;
 import com.adhamamr.passwordy.model.User;
 import com.adhamamr.passwordy.exception.ResourceNotFoundException;
-import com.adhamamr.passwordy.exception.UnauthorizedException;
 import com.adhamamr.passwordy.repository.PasswordRepository;
 import com.adhamamr.passwordy.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -112,6 +111,13 @@ public class PasswordServiceImpl implements PasswordService {
     }
 
     @Override
+    public List<PasswordResponse> getFavorites(String username) {
+        return passwordRepository.findByUserUsernameAndFavoriteTrue(username).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Override
     public PasswordResponse getPasswordById(Long id, String username) {
         return toResponse(findOwnedPassword(id, username));
     }
@@ -127,6 +133,13 @@ public class PasswordServiceImpl implements PasswordService {
         password.setNotes(request.notes());
         password.setCategory(request.category());
 
+        return toResponse(passwordRepository.save(password));
+    }
+
+    @Override
+    public PasswordResponse setFavorite(Long id, boolean favorite, String username) {
+        Password password = findOwnedPassword(id, username);
+        password.setFavorite(favorite);
         return toResponse(passwordRepository.save(password));
     }
 
@@ -164,16 +177,23 @@ public class PasswordServiceImpl implements PasswordService {
 
     /**
      * Loads a password and verifies it belongs to {@code username}. This is the single
-     * authorization gate shared by get/update/delete/decrypt.
+     * authorization gate shared by get/update/delete/decrypt/favorite.
      *
-     * @throws ResourceNotFoundException if no password has the given id (→ HTTP 404)
-     * @throws UnauthorizedException if the password belongs to another user (→ HTTP 403)
+     * <p>A password that exists but is owned by another user is reported as "not found"
+     * (HTTP 404), identically to an id that does not exist at all. Returning 403 only when
+     * the record exists would turn this gate into an enumeration oracle, letting an
+     * authenticated attacker probe which ids are in use across all users (403 = exists,
+     * 404 = doesn't). Treating "not yours" as "not found" removes that distinction.
+     *
+     * @throws ResourceNotFoundException if no password with the given id is owned by
+     *         {@code username} — whether because the id is unused or belongs to someone
+     *         else (→ HTTP 404)
      */
     private Password findOwnedPassword(Long id, String username) {
         Password password = passwordRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Password not found with id: " + id));
         if (!password.getUser().getUsername().equals(username)) {
-            throw new UnauthorizedException("Unauthorized access to password");
+            throw new ResourceNotFoundException("Password not found with id: " + id);
         }
         return password;
     }
@@ -195,6 +215,7 @@ public class PasswordServiceImpl implements PasswordService {
                 password.getUrl(),
                 password.getNotes(),
                 password.getCategory(),
+                password.isFavorite(),
                 password.getCreatedAt(),
                 password.getUpdatedAt()
         );

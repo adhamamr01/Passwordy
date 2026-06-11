@@ -42,3 +42,7 @@ frontend/gradlew.bat
 *.jar
 *.war
 *.ear
+
+# Claude Code — commit shared commands/skills, ignore transient/local state
+.claude/worktrees/
+.claude/settings.local.json

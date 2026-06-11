@@ -136,8 +136,8 @@ This is listed here so it is impossible to mistake the hardcoded keys for an ove
 |-----------|-------------|---------|
 | `MethodArgumentNotValidException`, `BadRequestException`, `IllegalArgumentException` | 400 | invalid input (failed `@Valid`, weak master password, duplicate account, bad length) |
 | `JwtAuthenticationEntryPoint` (filter), `InvalidCredentialsException` (login) | 401 | missing/invalid/expired JWT, or a failed login |
-| `UnauthorizedException` | 403 | authenticated, but not the owner |
-| `ResourceNotFoundException` | 404 | user/password not found |
+| `UnauthorizedException` | 403 | authenticated, but not the owner — **reserved**; the password routes no longer raise this (see below) |
+| `ResourceNotFoundException` | 404 | user/password not found, **or** a password owned by another user |
 | other `RuntimeException` | 500 | unexpected server error (e.g. crypto failure) |
 
 **Decision (refactor):** previously *every* `RuntimeException` was mapped to 404; introducing
@@ -152,6 +152,19 @@ field was wrong. It also runs a BCrypt comparison against a dummy hash when the 
 unknown, so the two paths take similar time and **response timing** can't be used to
 enumerate accounts either. (The `register` endpoint still reveals duplicate username/email,
 and brute-force throttling is a separate concern — both are tracked follow-ups.)
+
+**Ownership failures return 404, not 403.** The single ownership gate
+(`PasswordServiceImpl.findOwnedPassword`, shared by get/update/delete/decrypt/favorite)
+treats a password owned by another user identically to one that doesn't exist: both throw
+`ResourceNotFoundException` → **404**. An earlier design returned **403**
+(`UnauthorizedException`) for a record that existed but wasn't yours. That was more
+truthful, but it leaked existence: any authenticated user could probe `/api/passwords/{id}`
+and read `403` (id in use, by someone) vs `404` (id free) to enumerate which password ids
+exist across *all* accounts. Since a client only ever acts on its own ids, the 403/404
+distinction carries no legitimate value to it, so collapsing both to 404 removes the
+enumeration oracle at no real cost to honest callers. `UnauthorizedException` and its 403
+mapping are retained for any future authorization check where leaking existence is not a
+concern.
 
 ---
 

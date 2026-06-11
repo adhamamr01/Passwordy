@@ -34,6 +34,9 @@ public class Password {
 
     private String category;
 
+    @Column(nullable = false)
+    private boolean favorite = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
