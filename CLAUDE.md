@@ -79,9 +79,9 @@ authorization) lives in the backend.
   except for local dev hosts (`network_security_config.xml`), and `allowBackup=false`
   (DECISIONS.md §11). The H2 console ships **disabled** (`spring.h2.console.enabled=false`).
   The on-device JWT is now **Keystore-encrypted** (`TokenCrypto`). The frontend Gradle wrapper +
-  version catalog have been reconstructed and committed (Gradle 9.3.0 recovered; AGP/Kotlin
-  inferred — **verify with an Android Studio sync**). All frontend changes are **build-unverified**
-  (no Android toolchain in the dev/CI environment); a frontend CI job is still a follow-up.
+  version catalog have been reconstructed, committed, and verified by an Android Studio sync
+  (Gradle 9.4.1, AGP 9.2.1, Kotlin 2.2.10), and a **`frontend-ci.yml`** workflow builds the app on
+  JDK 21 (`testDebugUnitTest assembleDebug`).
 
 ## Docs
 - `README.md` — overview & quick start

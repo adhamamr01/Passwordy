@@ -269,9 +269,9 @@ non-exportable, generated per install); `TokenManager` encrypts on write and dec
 keeping its `Flow<String?>` API unchanged, and an undecryptable value is treated as "no token"
 (forces re-login). No new dependency — uses the framework Keystore API.
 
-**Build verification caveat.** The frontend Gradle **wrapper and version catalog were missing
+**Wrapper + catalog recovered.** The frontend Gradle **wrapper and version catalog were missing
 from version control** and have been reconstructed and committed (`gradle/wrapper/*`,
-`gradle/libs.versions.toml`). Gradle **9.3.0** was recovered from the build cache; the **AGP and
-Kotlin versions are inferred** and must be confirmed by a Gradle sync in Android Studio. None of
-the frontend changes in this work could be compiled here (no Android SDK/Gradle in the
-environment), so they are **build-unverified** pending a real sync/build.
+`gradle/libs.versions.toml`), then verified by an Android Studio Gradle sync: **Gradle 9.4.1,
+AGP 9.2.1, Kotlin 2.2.10**. A `frontend-ci.yml` workflow now builds the module
+(`testDebugUnitTest assembleDebug`) on JDK 21, so the frontend no longer relies on a local
+toolchain to stay green.
