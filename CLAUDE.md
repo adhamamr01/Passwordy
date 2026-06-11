@@ -67,9 +67,12 @@ authorization) lives in the backend.
   `application-{local,docker}.properties`. Rotating the AES key makes existing ciphertext
   undecryptable — there is no in-place re-encryption (DECISIONS.md §6).
 - **Rate limiting** is implemented: tiered Bucket4j token buckets in a `RateLimitFilter`
-  (auth/generation keyed by client IP, authenticated CRUD by username), configurable via
-  `ratelimit.*` and returning HTTP 429. Currently in-memory/single-instance and keyed off
-  `getRemoteAddr()` (no trusted-proxy `X-Forwarded-For` handling yet).
+  (auth/generation keyed by client IP, authenticated CRUD by username), plus an account-level
+  login throttle in `AuthServiceImpl` (keyed by submitted username → 429 via
+  `TooManyRequestsException`). Configurable via `ratelimit.*`. `ClientIpResolver` supports
+  trusted-proxy `X-Forwarded-For` (opt-in via `ratelimit.trusted-proxies`; default trusts none
+  and uses `getRemoteAddr()`). Still **single-instance / in-memory** (`ConcurrentHashMap`); a
+  shared store (e.g. Redis) is needed before horizontal scaling.
 - **Registration enumeration:** `register` reveals "username/email already exists"; the planned
   fix is an email-verification flow (DECISIONS.md §7).
 

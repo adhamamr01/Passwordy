@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RateLimitingService {
 
     /** The request categories, each with its own limit from {@link RateLimitProperties}. */
-    public enum Tier { AUTH, GENERATION, AUTHENTICATED }
+    public enum Tier { AUTH, GENERATION, AUTHENTICATED, LOGIN_USER }
 
     private final RateLimitProperties properties;
     private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
@@ -36,11 +36,24 @@ public class RateLimitingService {
         return bucket.tryConsumeAndReturnRemaining(1);
     }
 
+    /**
+     * Account-level login throttle: consumes one token from the {@link Tier#LOGIN_USER} bucket
+     * for {@code username}, returning whether the attempt is allowed. Disabled (always allowed)
+     * when rate limiting is turned off, so it follows the same global switch as the filter.
+     */
+    public boolean tryConsumeLogin(String username) {
+        if (!properties.isEnabled()) {
+            return true;
+        }
+        return tryConsume(Tier.LOGIN_USER, username).isConsumed();
+    }
+
     private Bucket newBucket(Tier tier) {
         RateLimitProperties.Limit limit = switch (tier) {
             case AUTH -> properties.getAuth();
             case GENERATION -> properties.getGeneration();
             case AUTHENTICATED -> properties.getAuthenticated();
+            case LOGIN_USER -> properties.getLoginPerUser();
         };
         Bandwidth bandwidth = Bandwidth.builder()
                 .capacity(limit.getCapacity())

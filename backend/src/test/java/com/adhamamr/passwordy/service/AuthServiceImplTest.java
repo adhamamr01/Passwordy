@@ -5,9 +5,11 @@ import com.adhamamr.passwordy.dto.LoginRequest;
 import com.adhamamr.passwordy.dto.RegisterRequest;
 import com.adhamamr.passwordy.exception.BadRequestException;
 import com.adhamamr.passwordy.exception.InvalidCredentialsException;
+import com.adhamamr.passwordy.exception.TooManyRequestsException;
 import com.adhamamr.passwordy.model.User;
 import com.adhamamr.passwordy.repository.UserRepository;
 import com.adhamamr.passwordy.security.JwtUtil;
+import com.adhamamr.passwordy.security.RateLimitingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,13 +31,16 @@ class AuthServiceImplTest {
     @Mock UserRepository userRepository;
     @Mock PasswordEncoder passwordEncoder;
     @Mock JwtUtil jwtUtil;
+    @Mock RateLimitingService rateLimitingService;
 
     private AuthServiceImpl authService;
 
     @BeforeEach
     void setUp() {
         when(passwordEncoder.encode(anyString())).thenReturn("$hashed$");
-        authService = new AuthServiceImpl(userRepository, passwordEncoder, jwtUtil);
+        // Login is allowed by default; the throttle test overrides this for its username.
+        lenient().when(rateLimitingService.tryConsumeLogin(anyString())).thenReturn(true);
+        authService = new AuthServiceImpl(userRepository, passwordEncoder, jwtUtil, rateLimitingService);
     }
 
     // --- register ---
@@ -98,6 +103,15 @@ class AuthServiceImplTest {
         AuthResponse response = authService.login(new LoginRequest("alice", "StrongP@ss1"));
 
         assertThat(response.token()).isEqualTo("jwt-token");
+    }
+
+    @Test
+    void login_accountThrottled_throwsTooManyRequestsBeforeDbLookup() {
+        when(rateLimitingService.tryConsumeLogin("alice")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("alice", "StrongP@ss1")))
+                .isInstanceOf(TooManyRequestsException.class);
+        verifyNoInteractions(userRepository);
     }
 
     @Test
