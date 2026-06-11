@@ -1,9 +1,12 @@
 package com.adhamamr.passwordy.service;
 
 import com.adhamamr.passwordy.dto.AuthResponse;
+import com.adhamamr.passwordy.dto.ForgotPasswordRequest;
 import com.adhamamr.passwordy.dto.LoginRequest;
 import com.adhamamr.passwordy.dto.MessageResponse;
 import com.adhamamr.passwordy.dto.RegisterRequest;
+import com.adhamamr.passwordy.dto.ResetPasswordRequest;
+import com.adhamamr.passwordy.model.TokenPurpose;
 import com.adhamamr.passwordy.exception.BadRequestException;
 import com.adhamamr.passwordy.exception.EmailNotVerifiedException;
 import com.adhamamr.passwordy.exception.InvalidCredentialsException;
@@ -115,7 +118,7 @@ class AuthServiceImplTest {
     @Test
     void verify_validToken_enablesUserAndConsumesToken() {
         User user = new User("alice", "alice@example.com", "$hashed$");
-        VerificationToken token = new VerificationToken("tok-123", user, Instant.now().plusSeconds(3600));
+        VerificationToken token = new VerificationToken("tok-123", user, TokenPurpose.VERIFY_EMAIL, Instant.now().plusSeconds(3600));
         when(tokenRepository.findByToken("tok-123")).thenReturn(Optional.of(token));
 
         MessageResponse response = authService.verify("tok-123");
@@ -137,13 +140,91 @@ class AuthServiceImplTest {
     @Test
     void verify_expiredToken_throwsBadRequestAndDeletesToken() {
         User user = new User("alice", "alice@example.com", "$hashed$");
-        VerificationToken token = new VerificationToken("old", user, Instant.now().minusSeconds(1));
+        VerificationToken token = new VerificationToken("old", user, TokenPurpose.VERIFY_EMAIL, Instant.now().minusSeconds(1));
         when(tokenRepository.findByToken("old")).thenReturn(Optional.of(token));
 
         assertThatThrownBy(() -> authService.verify("old"))
                 .isInstanceOf(BadRequestException.class);
         verify(tokenRepository).delete(token);
         verify(userRepository, never()).save(any());
+    }
+
+    // --- forgot / reset / resend ---
+
+    @Test
+    void forgotPassword_existingEmail_issuesResetTokenAndEmails() {
+        User user = verifiedUser();
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+
+        MessageResponse response = authService.forgotPassword(new ForgotPasswordRequest("alice@example.com"));
+
+        assertThat(response.message()).contains("email");
+        verify(tokenRepository).save(argThat(t -> t.getPurpose() == TokenPurpose.PASSWORD_RESET));
+        verify(emailService).sendPasswordResetEmail(eq("alice@example.com"), anyString());
+    }
+
+    @Test
+    void forgotPassword_unknownEmail_returnsGenericAckWithoutEmail() {
+        when(userRepository.findByEmail("ghost@example.com")).thenReturn(Optional.empty());
+
+        MessageResponse response = authService.forgotPassword(new ForgotPasswordRequest("ghost@example.com"));
+
+        assertThat(response.message()).contains("email");
+        verify(tokenRepository, never()).save(any());
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void resetPassword_validToken_rehashesEnablesAndConsumes() {
+        User user = new User("alice", "alice@example.com", "$old$");
+        VerificationToken token = new VerificationToken("rst", user, TokenPurpose.PASSWORD_RESET, Instant.now().plusSeconds(3600));
+        when(tokenRepository.findByToken("rst")).thenReturn(Optional.of(token));
+        when(passwordEncoder.encode("NewStr0ng@1")).thenReturn("$argon2new$");
+
+        MessageResponse response = authService.resetPassword(new ResetPasswordRequest("rst", "NewStr0ng@1"));
+
+        assertThat(response.message()).contains("reset");
+        assertThat(user.getMasterPasswordHash()).isEqualTo("$argon2new$");
+        assertThat(user.isEnabled()).isTrue();
+        verify(tokenRepository).delete(token);
+    }
+
+    @Test
+    void resetPassword_wrongPurposeToken_throwsBadRequest() {
+        User user = new User("alice", "alice@example.com", "$old$");
+        VerificationToken token = new VerificationToken("verify-tok", user, TokenPurpose.VERIFY_EMAIL, Instant.now().plusSeconds(3600));
+        when(tokenRepository.findByToken("verify-tok")).thenReturn(Optional.of(token));
+
+        assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest("verify-tok", "NewStr0ng@1")))
+                .isInstanceOf(BadRequestException.class);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void resetPassword_weakNewPassword_throwsBadRequestBeforeTokenLookup() {
+        assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest("rst", "weak")))
+                .isInstanceOf(BadRequestException.class);
+        verifyNoInteractions(tokenRepository);
+    }
+
+    @Test
+    void resendVerification_unverifiedAccount_emailsNewToken() {
+        User user = new User("alice", "alice@example.com", "$hashed$"); // enabled = false
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+
+        authService.resendVerification(new ForgotPasswordRequest("alice@example.com"));
+
+        verify(emailService).sendVerificationEmail(eq("alice@example.com"), anyString());
+    }
+
+    @Test
+    void resendVerification_alreadyVerified_doesNothing() {
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(verifiedUser()));
+
+        authService.resendVerification(new ForgotPasswordRequest("alice@example.com"));
+
+        verify(tokenRepository, never()).save(any());
+        verifyNoInteractions(emailService);
     }
 
     // --- login ---

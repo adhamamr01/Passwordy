@@ -1,9 +1,11 @@
 package com.adhamamr.passwordy.data.repository
 
 import com.adhamamr.passwordy.data.model.AuthResponse
+import com.adhamamr.passwordy.data.model.ForgotPasswordRequest
 import com.adhamamr.passwordy.data.model.LoginRequest
 import com.adhamamr.passwordy.data.model.MessageResponse
 import com.adhamamr.passwordy.data.model.RegisterRequest
+import com.adhamamr.passwordy.data.model.ResetPasswordRequest
 import com.adhamamr.passwordy.data.network.RetrofitInstance
 import retrofit2.Response
 
@@ -20,5 +22,13 @@ class AuthRepository {
     suspend fun login(username: String, masterPassword: String): Response<AuthResponse> {
         val request = LoginRequest(username, masterPassword)
         return api.login(request)
+    }
+
+    suspend fun forgotPassword(email: String): Response<MessageResponse> {
+        return api.forgotPassword(ForgotPasswordRequest(email))
+    }
+
+    suspend fun resetPassword(token: String, newPassword: String): Response<MessageResponse> {
+        return api.resetPassword(ResetPasswordRequest(token, newPassword))
     }
 }

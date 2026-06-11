@@ -35,17 +35,32 @@ public class SmtpEmailService implements EmailService {
 
     @Override
     public void sendVerificationEmail(String toEmail, String token) {
-        String link = baseUrl + "/api/auth/verify?token=" + token;
+        send(toEmail, "Verify your Passwordy account",
+                "Welcome to Passwordy!\n\nPlease verify your account by opening this link:\n"
+                        + baseUrl + "/api/auth/verify?token=" + token
+                        + "\n\nIf you didn't create this account, you can ignore this email.");
+    }
+
+    @Override
+    public void sendPasswordResetEmail(String toEmail, String token) {
+        send(toEmail, "Reset your Passwordy master password",
+                "We received a request to reset your master password.\n\nUse this token to set a new "
+                        + "password, or open the link:\n" + baseUrl + "/reset-password?token=" + token
+                        + "\n\nToken: " + token
+                        + "\n\nIf you didn't request this, you can ignore this email — your password is unchanged.");
+    }
+
+    private void send(String toEmail, String subject, String body) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
         message.setTo(toEmail);
-        message.setSubject("Verify your Passwordy account");
-        message.setText("Welcome to Passwordy!\n\nPlease verify your account by opening this link:\n"
-                + link + "\n\nIf you didn't create this account, you can ignore this email.");
+        message.setSubject(subject);
+        message.setText(body);
         try {
             mailSender.send(message);
         } catch (MailException e) {
-            log.warn("Failed to send verification email to {} (registration still proceeds)", toEmail, e);
+            // Don't fail (or leak timing about) the flow on a mail hiccup; the user can retry.
+            log.warn("Failed to send '{}' email to {}", subject, toEmail, e);
         }
     }
 }

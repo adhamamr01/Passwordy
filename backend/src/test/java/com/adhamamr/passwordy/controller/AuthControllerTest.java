@@ -118,6 +118,40 @@ class AuthControllerTest {
     }
 
     @Test
+    void forgotPassword_returns202WithGenericMessage() throws Exception {
+        when(authService.forgotPassword(any())).thenReturn(new MessageResponse("If an account with that email exists, we've sent it an email."));
+
+        mockMvc.perform(post("/api/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("email", "alice@example.com"))))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void resetPassword_validToken_returns200() throws Exception {
+        when(authService.resetPassword(any())).thenReturn(new MessageResponse("Your master password has been reset. You can now log in."));
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "token", "rst-123", "newPassword", "NewStr0ng@1"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Your master password has been reset. You can now log in."));
+    }
+
+    @Test
+    void resetPassword_invalidToken_returns400() throws Exception {
+        when(authService.resetPassword(any())).thenThrow(new BadRequestException("Invalid or expired token"));
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "token", "bad", "newPassword", "NewStr0ng@1"))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void login_unverifiedAccount_returns403() throws Exception {
         when(authService.login(any())).thenThrow(new EmailNotVerifiedException("Please verify your email before logging in"));
 

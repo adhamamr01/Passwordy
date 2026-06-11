@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.adhamamr.passwordy.data.local.TokenManager
+import com.adhamamr.passwordy.data.model.MessageResponse
 import com.adhamamr.passwordy.data.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,20 +28,29 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     /**
      * Registration no longer logs the user in: the account must be verified via the emailed
-     * link first. On success we surface the generic acknowledgement (no token is saved) so the
-     * UI can tell the user to check their inbox.
+     * link first. Like forgot/reset-password, it surfaces a generic message (no token saved)
+     * via the [AuthUiState.Registered] state, which the UI shows before routing back to login.
      */
-    fun register(username: String, email: String, masterPassword: String) {
+    fun register(username: String, email: String, masterPassword: String) =
+        submitForMessage("Registration failed") { repository.register(username, email, masterPassword) }
+
+    fun forgotPassword(email: String) =
+        submitForMessage("Couldn't start password reset") { repository.forgotPassword(email) }
+
+    fun resetPassword(token: String, newPassword: String) =
+        submitForMessage("Password reset failed") { repository.resetPassword(token, newPassword) }
+
+    /** Runs a message-only auth action (register/forgot/reset): no token, just a [Registered] message. */
+    private fun submitForMessage(errorFallback: String, action: suspend () -> Response<MessageResponse>) {
         viewModelScope.launch {
             _uiState.value = AuthUiState.Loading
             try {
-                val response = repository.register(username, email, masterPassword)
+                val response = action()
                 if (response.isSuccessful) {
-                    val message = response.body()?.message
-                        ?: "Account created. Check your email to verify before logging in."
-                    _uiState.value = AuthUiState.Registered(message)
+                    _uiState.value = AuthUiState.Registered(
+                        response.body()?.message ?: "Done — please check your email.")
                 } else {
-                    _uiState.value = AuthUiState.Error(parseError(response, "Registration failed"))
+                    _uiState.value = AuthUiState.Error(parseError(response, errorFallback))
                 }
             } catch (e: Exception) {
                 _uiState.value = AuthUiState.Error(e.message ?: "Network error")
