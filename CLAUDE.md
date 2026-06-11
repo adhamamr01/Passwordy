@@ -76,8 +76,9 @@ authorization) lives in the backend.
   login throttle in `AuthServiceImpl` (keyed by submitted username → 429 via
   `TooManyRequestsException`). Configurable via `ratelimit.*`. `ClientIpResolver` supports
   trusted-proxy `X-Forwarded-For` (opt-in via `ratelimit.trusted-proxies`; default trusts none
-  and uses `getRemoteAddr()`). Still **single-instance / in-memory** (`ConcurrentHashMap`); a
-  shared store (e.g. Redis) is needed before horizontal scaling.
+  and uses `getRemoteAddr()`). The bucket store is **pluggable** behind `RateLimitBucketProvider`:
+  in-memory `ConcurrentHashMap` by default (single instance), or **Redis-backed** (shared across
+  instances) via `ratelimit.store=redis` + `ratelimit.redis.url` (Bucket4j over Lettuce).
 - **Registration enumeration:** `register` reveals "username/email already exists"; the planned
   fix is an email-verification flow (DECISIONS.md §7).
 - **Android client hardening:** body logging is gated to debug builds, cleartext HTTP is blocked

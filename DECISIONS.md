@@ -289,3 +289,24 @@ from version control** and have been reconstructed and committed (`gradle/wrappe
 AGP 9.2.1, Kotlin 2.2.10**. A `frontend-ci.yml` workflow now builds the module
 (`testDebugUnitTest assembleDebug`) on JDK 21, so the frontend no longer relies on a local
 toolchain to stay green.
+
+---
+
+## 12. Rate-limit store: pluggable in-memory or Redis
+
+The rate limiter's buckets sit behind a `RateLimitBucketProvider` so the storage backend is a
+config choice, not a code change:
+
+- **`ratelimit.store=memory`** (default) — `InMemoryBucketProvider`, a process-local
+  `ConcurrentHashMap`. Zero extra infrastructure; correct for a single instance. The limits are
+  per-process, so two instances would each allow the full quota.
+- **`ratelimit.store=redis`** — `RedisBucketProvider`, Bucket4j's Lettuce `ProxyManager` with
+  bucket state in Redis, so consumption is shared and limits hold **cluster-wide**. The
+  connection is a self-contained `ratelimit.redis.url` (Lettuce wants a native client, so a raw
+  URL maps directly — no `spring-boot-starter-data-redis` and no unwrapping of Spring's
+  connection factory). Bucket keys carry a write-expiration so idle entries are reclaimed.
+
+Only one provider bean is active (selected by `@ConditionalOnProperty`), so the default context
+and the existing suite are unaffected. The Redis path is covered by `RedisRateLimitIntegrationTest`
+against a Testcontainers Redis — `disabledWithoutDocker`, so it skips on a Docker-29 host and runs
+on CI, same pattern as the PostgreSQL test (§10).
