@@ -234,10 +234,17 @@ changed to the host's LAN IP.
   `application-local.properties`.
 
 **Tests run on in-memory H2** — `mvn test` / `clean install` need no database or Docker. A
-Testcontainers-backed PostgreSQL test was prototyped but reverted: the docker-java client in
-current Testcontainers (≤1.21.4) can't negotiate with Docker Engine 29.x. Revisit once
-Testcontainers supports Docker 29; until then, PostgreSQL parity is exercised by running the
-app under the `docker`/`local` profiles.
+single Testcontainers-backed PostgreSQL test (`PostgresIntegrationTest`, real Postgres via
+`@ServiceConnection`) provides dialect/schema parity, but it is annotated
+`@Testcontainers(disabledWithoutDocker = true)` so it **skips cleanly** when no usable Docker
+client is found — the default suite still needs nothing installed.
+
+The docker-java client bundled in the current Testcontainers release (1.21.3, the latest)
+**still cannot negotiate with Docker Engine 29.x**: its `/info` call returns HTTP 400 even with
+the correct engine pipe and a pinned `DOCKER_API_VERSION`. So on a Docker-29 host the test is
+*skipped*, not run. It executes for real where docker-java is compatible (older Docker, e.g. CI
+runners). Until Testcontainers ships a docker-java that supports Docker 29, local Postgres
+parity is also exercisable by running the app under the `docker`/`local` profiles.
 
 > The PostgreSQL JDBC driver (`org.postgresql:postgresql`) was previously missing from
 > `pom.xml` — the `docker`/`local` profiles could not actually have connected without it. It
