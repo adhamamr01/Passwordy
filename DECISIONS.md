@@ -310,3 +310,9 @@ Only one provider bean is active (selected by `@ConditionalOnProperty`), so the 
 and the existing suite are unaffected. The Redis path is covered by `RedisRateLimitIntegrationTest`
 against a Testcontainers Redis — `disabledWithoutDocker`, so it skips on a Docker-29 host and runs
 on CI, same pattern as the PostgreSQL test (§10).
+
+**Fail-open on store outage.** `RateLimitingService.tryConsume` catches any store error (e.g.
+Redis unreachable), logs a warning, and **allows** the request. A rate limiter must not become a
+single point of failure that takes down the whole API; the other defenses (auth, ownership,
+validation) still apply. The accepted trade-off is that limits aren't enforced *during* a store
+outage — favouring availability over strict throttling for what is a rare, transient condition.
