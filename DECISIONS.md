@@ -262,6 +262,13 @@ and the bearer token on-device, so three defaults were tightened:
   non-local deployment.
 - **Backups disabled.** `allowBackup` was `true` with empty rules, so the DataStore holding the
   JWT could be copied out via cloud backup or `adb backup`. It is now `false`.
+- **Screen capture blocked.** `MainActivity` sets `FLAG_SECURE`, so revealed passwords can't be
+  screenshotted, screen-recorded, or captured in the recents-screen thumbnail. (Trade-off: this
+  also blocks legitimate user screenshots — standard for a password manager.)
+- **Clipboard copies are sensitive + ephemeral.** Copied values (incl. the decrypted password)
+  are flagged `EXTRA_IS_SENSITIVE` so Android 13+ masks the preview and excludes them from
+  clipboard history / cross-device sync, and the clipboard is auto-cleared after 45s (only if it
+  still holds the copied value).
 
 **Token encrypted at rest.** The JWT was stored in a plain Jetpack DataStore. It is now
 encrypted with an AES-256-GCM key held in the **Android Keystore** (`TokenCrypto`,

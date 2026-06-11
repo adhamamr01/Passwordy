@@ -1,8 +1,13 @@
 package com.adhamamr.passwordy.ui.passwords
 
 import android.content.ClipData
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.os.PersistableBundle
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -417,9 +422,30 @@ fun DetailItem(
     }
 }
 
+private const val CLIPBOARD_CLEAR_DELAY_MS = 45_000L
+
 private fun copyToClipboard(context: Context, label: String, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    val clip = ClipData.newPlainText(label, text)
+    val clip = ClipData.newPlainText(label, text).apply {
+        // Mark sensitive so Android 13+ masks the clipboard preview and excludes the value
+        // from clipboard history / cross-device sync (Gboard, OEM clipboards).
+        description.extras = PersistableBundle().apply {
+            putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+        }
+    }
     clipboard.setPrimaryClip(clip)
+
+    // Auto-clear after a short window so a copied secret doesn't linger — but only if the
+    // clipboard still holds this value (don't wipe something the user copied afterwards).
+    Handler(Looper.getMainLooper()).postDelayed({
+        if (clipboard.primaryClip?.getItemAt(0)?.text == text) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                clipboard.clearPrimaryClip()
+            } else {
+                clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
+            }
+        }
+    }, CLIPBOARD_CLEAR_DELAY_MS)
+
     Toast.makeText(context, "$label copied to clipboard", Toast.LENGTH_SHORT).show()
 }
