@@ -14,4 +14,10 @@ public interface PasswordRepository extends JpaRepository<Password, Long> {
      * memory.
      */
     List<Password> findByUserUsername(String username);
+
+    /**
+     * Returns the user's favorite passwords only, filtered in the database (owner + favorite
+     * flag) so favorites are never selected across another user's rows.
+     */
+    List<Password> findByUserUsernameAndFavoriteTrue(String username);
 }

@@ -42,8 +42,8 @@ Errors are returned as `{ "error": "<message>" }` and mapped by `GlobalException
 | `204 No Content` | successful delete |
 | `400 Bad Request` | invalid input — failed validation (`@Valid`), weak master password, duplicate username/email, or out-of-range generation length |
 | `401 Unauthorized` | missing/invalid/expired JWT (`JwtAuthenticationEntryPoint`), or a failed login — wrong username **or** password |
-| `403 Forbidden` | authenticated user is not the owner of the resource (`UnauthorizedException`) |
-| `404 Not Found` | user or password does not exist (`ResourceNotFoundException`) |
+| `403 Forbidden` | reserved for ownership/authorization failures (`UnauthorizedException`); **not** used by the password routes, which return `404` for non-owned records (see below) |
+| `404 Not Found` | user or password does not exist — **or** a password exists but is owned by another user (`ResourceNotFoundException`). A password you don't own is reported identically to one that doesn't exist, so the `/api/passwords/{id}` routes can't be used to enumerate which ids exist across accounts |
 | `500 Internal Server Error` | unexpected server errors (e.g. encryption/decryption failure) — returns a generic message; details are logged server-side |
 
 > Request bodies are validated with Bean Validation: `register` requires a non-blank username,
@@ -152,17 +152,25 @@ The `PasswordResponse` object returned by these endpoints:
   "url": "https://github.com",
   "notes": "work account",
   "category": "Work",
+  "favorite": false,
   "createdAt": "2026-06-01T10:15:30",
   "updatedAt": null
 }
 ```
 
 > `value` is the **encrypted** password. Plaintext is only returned by the `/decrypt`
-> endpoint. `updatedAt` is `null` until the entry is first edited.
+> endpoint. `favorite` indicates whether the user has starred the entry. `updatedAt` is
+> `null` until the entry is first edited.
 
 ### `GET /api/passwords`
-List all passwords owned by the authenticated user. Returns `200 OK` with an array of
+List passwords owned by the authenticated user. Returns `200 OK` with an array of
 `PasswordResponse` (encrypted values).
+
+**Query parameters**
+
+| Param | Default | Effect |
+|-------|---------|--------|
+| `favoritesOnly` | `false` | When `true`, returns only the caller's favorite entries. |
 
 ### `POST /api/passwords`
 Create a password. The `password` field is encrypted server-side before storage.
@@ -182,15 +190,27 @@ Create a password. The `password` field is encrypted server-side before storage.
 
 ### `GET /api/passwords/{id}`
 Fetch a single password (encrypted `value`).
-`404` if it doesn't exist, `403` if it belongs to another user.
+`404` if it doesn't exist **or** belongs to another user (the two are indistinguishable, by design).
 
 ### `PUT /api/passwords/{id}`
 Update a password. Same body as `POST /api/passwords`; the new `password` is re-encrypted.
 **Response `200 OK`** — the updated `PasswordResponse`.
 
+### `PUT /api/passwords/{id}/favorite`
+Mark or unmark a password as a favorite, after verifying ownership.
+
+**Request (`FavoriteRequest`)**
+```json
+{ "favorite": true }
+```
+`favorite` is required (omitting it returns `400`).
+
+**Response `200 OK`** — the updated `PasswordResponse` (with the new `favorite` value).
+`404` if not found or not owned by the caller.
+
 ### `DELETE /api/passwords/{id}`
 Delete a password. **Response `204 No Content`.**
-`404` if not found, `403` if not the owner.
+`404` if not found or not owned by the caller.
 
 ### `POST /api/passwords/{id}/decrypt`
 Decrypt and return the plaintext password, after verifying ownership.
@@ -199,7 +219,7 @@ Decrypt and return the plaintext password, after verifying ownership.
 ```json
 { "password": "myPlaintextSecret" }
 ```
-`404` if not found, `403` if not the owner, `500` if decryption fails.
+`404` if not found or not owned by the caller, `500` if decryption fails.
 
 ---
 

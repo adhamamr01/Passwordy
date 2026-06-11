@@ -3,7 +3,6 @@ package com.adhamamr.passwordy.service;
 import com.adhamamr.passwordy.dto.PasswordResponse;
 import com.adhamamr.passwordy.dto.PasswordSaveRequest;
 import com.adhamamr.passwordy.exception.ResourceNotFoundException;
-import com.adhamamr.passwordy.exception.UnauthorizedException;
 import com.adhamamr.passwordy.model.Password;
 import com.adhamamr.passwordy.model.User;
 import com.adhamamr.passwordy.repository.PasswordRepository;
@@ -134,13 +133,15 @@ class PasswordServiceImplTest {
     }
 
     @Test
-    void getPasswordById_otherUsersPassword_throwsUnauthorized() {
+    void getPasswordById_otherUsersPassword_throwsResourceNotFound() {
+        // "Not yours" is reported as 404, identically to a non-existent id, so the
+        // ownership gate cannot be used to enumerate which password ids exist.
         User bob = new User("bob", "bob@example.com", "$hashed$");
         Password p = buildPassword(1L, "enc", bob);
         when(passwordRepository.findById(1L)).thenReturn(Optional.of(p));
 
         assertThatThrownBy(() -> service.getPasswordById(1L, "alice"))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
@@ -164,13 +165,13 @@ class PasswordServiceImplTest {
     }
 
     @Test
-    void deletePassword_otherUsersPassword_throwsUnauthorized() {
+    void deletePassword_otherUsersPassword_throwsResourceNotFound() {
         User bob = new User("bob", "bob@example.com", "$hashed$");
         Password p = buildPassword(1L, "enc", bob);
         when(passwordRepository.findById(1L)).thenReturn(Optional.of(p));
 
         assertThatThrownBy(() -> service.deletePassword(1L, "alice"))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(ResourceNotFoundException.class);
         verify(passwordRepository, never()).deleteById(any());
     }
 
@@ -183,6 +184,55 @@ class PasswordServiceImplTest {
         when(encryptionService.decrypt("encrypted")).thenReturn("secret");
 
         assertThat(service.decryptPassword(1L, "alice")).isEqualTo("secret");
+    }
+
+    // --- setFavorite ---
+
+    @Test
+    void setFavorite_ownPassword_setsFlagAndSaves() {
+        Password p = buildPassword(1L, "enc", alice);
+        when(passwordRepository.findById(1L)).thenReturn(Optional.of(p));
+        when(passwordRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        PasswordResponse response = service.setFavorite(1L, true, "alice");
+
+        assertThat(response.favorite()).isTrue();
+        assertThat(p.isFavorite()).isTrue();
+        verify(passwordRepository).save(p);
+    }
+
+    @Test
+    void setFavorite_otherUsersPassword_throwsResourceNotFound() {
+        User bob = new User("bob", "bob@example.com", "$hashed$");
+        Password p = buildPassword(1L, "enc", bob);
+        when(passwordRepository.findById(1L)).thenReturn(Optional.of(p));
+
+        assertThatThrownBy(() -> service.setFavorite(1L, true, "alice"))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(passwordRepository, never()).save(any());
+    }
+
+    @Test
+    void setFavorite_notFound_throwsResourceNotFound() {
+        when(passwordRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.setFavorite(99L, true, "alice"))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    // --- getFavorites ---
+
+    @Test
+    void getFavorites_returnsOnlyFavoritesFromOwnerScopedQuery() {
+        Password fav = buildPassword(1L, "enc", alice);
+        fav.setFavorite(true);
+        when(passwordRepository.findByUserUsernameAndFavoriteTrue("alice")).thenReturn(List.of(fav));
+
+        List<PasswordResponse> responses = service.getFavorites("alice");
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).favorite()).isTrue();
+        verify(passwordRepository).findByUserUsernameAndFavoriteTrue("alice");
     }
 
     // --- helpers ---

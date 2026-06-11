@@ -18,8 +18,16 @@ public interface PasswordService {
 
     PasswordResponse savePassword(PasswordSaveRequest request, String username);
     List<PasswordResponse> getAllPasswords(String username);
+
+    /** Returns only the user's favorite passwords. */
+    List<PasswordResponse> getFavorites(String username);
+
     PasswordResponse getPasswordById(Long id, String username);
     PasswordResponse updatePassword(Long id, PasswordSaveRequest request, String username);
+
+    /** Sets (or clears) the favorite flag on the user's password, after an ownership check. */
+    PasswordResponse setFavorite(Long id, boolean favorite, String username);
+
     void deletePassword(Long id, String username);
 
     /** Returns the decrypted plaintext for the user's password, after an ownership check. */

@@ -1,5 +1,6 @@
 package com.adhamamr.passwordy.controller;
 
+import com.adhamamr.passwordy.dto.FavoriteRequest;
 import com.adhamamr.passwordy.dto.PasswordGenerationRequest;
 import com.adhamamr.passwordy.dto.PasswordResponse;
 import com.adhamamr.passwordy.dto.PasswordSaveRequest;
@@ -62,8 +63,13 @@ public class PasswordController {
     }
 
     @GetMapping("/passwords")
-    public ResponseEntity<List<PasswordResponse>> getAllPasswords() {
-        return ResponseEntity.ok(passwordService.getAllPasswords(getAuthenticatedUsername()));
+    public ResponseEntity<List<PasswordResponse>> getAllPasswords(
+            @RequestParam(name = "favoritesOnly", defaultValue = "false") boolean favoritesOnly) {
+        String username = getAuthenticatedUsername();
+        List<PasswordResponse> passwords = favoritesOnly
+                ? passwordService.getFavorites(username)
+                : passwordService.getAllPasswords(username);
+        return ResponseEntity.ok(passwords);
     }
 
     @GetMapping("/passwords/{id}")
@@ -75,6 +81,13 @@ public class PasswordController {
     public ResponseEntity<PasswordResponse> updatePassword(@PathVariable Long id,
                                                            @Valid @RequestBody PasswordSaveRequest request) {
         return ResponseEntity.ok(passwordService.updatePassword(id, request, getAuthenticatedUsername()));
+    }
+
+    @PutMapping("/passwords/{id}/favorite")
+    public ResponseEntity<PasswordResponse> setFavorite(@PathVariable Long id,
+                                                        @Valid @RequestBody FavoriteRequest request) {
+        return ResponseEntity.ok(
+                passwordService.setFavorite(id, request.favorite(), getAuthenticatedUsername()));
     }
 
     @DeleteMapping("/passwords/{id}")

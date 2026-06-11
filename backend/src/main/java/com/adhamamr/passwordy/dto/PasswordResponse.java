@@ -11,6 +11,7 @@ public record PasswordResponse(
         String url,
         String notes,
         String category,
+        boolean favorite,
         Instant createdAt,
         Instant updatedAt) {
 }
