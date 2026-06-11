@@ -5,9 +5,10 @@ import retrofit2.Response
 import retrofit2.http.*
 
 /**
- * Retrofit definition of the Passwordy HTTP API. Authenticated calls take the
- * `Authorization` header explicitly (supplied by the repository); auth and generation
- * endpoints omit it. Each method returns a Retrofit [Response] so callers can inspect status.
+ * Retrofit definition of the Passwordy HTTP API. The access token is attached automatically by
+ * [AuthInterceptor] on authenticated calls (and refreshed by [TokenAuthenticator] on a 401), so
+ * methods no longer take an explicit `Authorization` header. Auth and generation endpoints are
+ * public. Each method returns a Retrofit [Response] so callers can inspect status.
  */
 interface ApiService {
 
@@ -23,6 +24,12 @@ interface ApiService {
     @POST("api/auth/reset-password")
     suspend fun resetPassword(@Body request: ResetPasswordRequest): Response<MessageResponse>
 
+    @POST("api/auth/refresh")
+    suspend fun refresh(@Body request: RefreshRequest): Response<AuthResponse>
+
+    @POST("api/auth/logout")
+    suspend fun logout(@Body request: RefreshRequest): Response<MessageResponse>
+
     @POST("api/password/generate")
     suspend fun generatePassword(@Body request: PasswordGenerationRequest): Response<GeneratedPasswordResponse>
 
@@ -30,39 +37,23 @@ interface ApiService {
     suspend fun generatePin(@Body request: PinGenerationRequest): Response<GeneratedPinResponse>
 
     @GET("api/password/categories")
-    suspend fun getCategories(@Header("Authorization") token: String): Response<List<String>>
+    suspend fun getCategories(): Response<List<String>>
 
     @GET("api/passwords")
-    suspend fun getAllPasswords(@Header("Authorization") token: String): Response<List<PasswordResponse>>
+    suspend fun getAllPasswords(): Response<List<PasswordResponse>>
 
     @POST("api/passwords")
-    suspend fun savePassword(
-        @Header("Authorization") token: String,
-        @Body request: PasswordRequest
-    ): Response<PasswordResponse>
+    suspend fun savePassword(@Body request: PasswordRequest): Response<PasswordResponse>
 
     @GET("api/passwords/{id}")
-    suspend fun getPasswordById(
-        @Header("Authorization") token: String,
-        @Path("id") id: Long
-    ): Response<PasswordResponse>
+    suspend fun getPasswordById(@Path("id") id: Long): Response<PasswordResponse>
 
     @POST("api/passwords/{id}/decrypt")
-    suspend fun decryptPassword(
-        @Header("Authorization") token: String,
-        @Path("id") id: Long
-    ): Response<Map<String, String>>
+    suspend fun decryptPassword(@Path("id") id: Long): Response<Map<String, String>>
 
     @PUT("api/passwords/{id}")
-    suspend fun updatePassword(
-        @Header("Authorization") token: String,
-        @Path("id") id: Long,
-        @Body request: PasswordRequest
-    ): Response<PasswordResponse>
+    suspend fun updatePassword(@Path("id") id: Long, @Body request: PasswordRequest): Response<PasswordResponse>
 
     @DELETE("api/passwords/{id}")
-    suspend fun deletePassword(
-        @Header("Authorization") token: String,
-        @Path("id") id: Long
-    ): Response<Unit>
+    suspend fun deletePassword(@Path("id") id: Long): Response<Unit>
 }

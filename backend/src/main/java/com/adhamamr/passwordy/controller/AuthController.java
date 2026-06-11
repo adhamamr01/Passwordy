@@ -4,6 +4,7 @@ import com.adhamamr.passwordy.dto.AuthResponse;
 import com.adhamamr.passwordy.dto.ForgotPasswordRequest;
 import com.adhamamr.passwordy.dto.LoginRequest;
 import com.adhamamr.passwordy.dto.MessageResponse;
+import com.adhamamr.passwordy.dto.RefreshRequest;
 import com.adhamamr.passwordy.dto.RegisterRequest;
 import com.adhamamr.passwordy.dto.ResetPasswordRequest;
 import com.adhamamr.passwordy.service.AuthService;
@@ -57,5 +58,15 @@ public class AuthController {
     @PostMapping("/resend-verification")
     public ResponseEntity<MessageResponse> resendVerification(@Valid @RequestBody ForgotPasswordRequest request) {
         return ResponseEntity.accepted().body(authService.resendVerification(request));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ResponseEntity.ok(authService.refresh(request));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<MessageResponse> logout(@Valid @RequestBody RefreshRequest request) {
+        return ResponseEntity.ok(authService.logout(request));
     }
 }

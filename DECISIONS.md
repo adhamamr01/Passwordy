@@ -342,3 +342,26 @@ message.
 not account existence, so it's not an oracle). A real SMTP server is required for the flow to be
 usable in production; the committed profile points at `localhost` so the context starts and sends
 simply fail-and-log until configured.
+
+---
+
+## 14. Access + refresh tokens (revocable sessions)
+
+The original single 24h JWT couldn't be revoked: logout, a stolen device, or a password change
+all left live tokens working until natural expiry. Replaced with the standard two-token scheme:
+
+- **Access token** — a short-lived JWT (~15 min, `jwt.expiration`), sent on every request.
+- **Refresh token** — a long-lived opaque random value (`auth.refresh-ttl-days`, default 30).
+  Only its SHA-256 hash is stored (`RefreshToken`), so a DB leak can't be replayed. Login returns
+  both; `POST /api/auth/refresh` swaps a refresh token for a new access token and **rotates** the
+  refresh token (delete-on-use), so a replayed/old refresh token is simply not found → 401.
+
+Revocation: `POST /api/auth/logout` deletes the presented refresh token; a password reset deletes
+**all** of the user's refresh tokens (ends every session). Access tokens are not denylisted — a
+logged-out access token still works until it expires (≤15 min), the accepted trade-off for keeping
+access-token validation stateless. (A jti denylist could close that window if ever needed.)
+
+**Android:** the client stores both tokens (Keystore-encrypted). An `AuthInterceptor` attaches the
+access token; a `TokenAuthenticator` transparently refreshes on a 401 (using a plain, no-authenticator
+client so the refresh call can't recurse) and retries, falling back to logout if refresh fails. This
+moved token handling out of the repositories — `@Header` was dropped from the authenticated routes.

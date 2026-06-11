@@ -19,7 +19,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adhamamr.passwordy.data.local.TokenManager
 import com.adhamamr.passwordy.data.model.PasswordResponse
 import com.adhamamr.passwordy.data.network.RetrofitInstance
+import com.adhamamr.passwordy.data.repository.AuthRepository
 import com.adhamamr.passwordy.data.repository.PasswordRepository
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,7 +35,7 @@ fun PasswordListScreen(
     // Setup ViewModel
     val tokenManager = remember { TokenManager(context) }
     val apiService = RetrofitInstance.api
-    val repository = remember { PasswordRepository(apiService, tokenManager) }
+    val repository = remember { PasswordRepository(apiService) }
     val viewModel: PasswordViewModel = viewModel(
         factory = PasswordViewModelFactory(repository)
     )
@@ -50,6 +52,10 @@ fun PasswordListScreen(
                     IconButton(
                         onClick = {
                             scope.launch {
+                                // Revoke the refresh token server-side, then clear locally.
+                                tokenManager.refreshToken.first()?.let { rt ->
+                                    runCatching { AuthRepository().logout(rt) }
+                                }
                                 tokenManager.clearToken()
                                 onLogout()
                             }

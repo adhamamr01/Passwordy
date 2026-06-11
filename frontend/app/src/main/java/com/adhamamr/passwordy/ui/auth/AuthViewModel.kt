@@ -66,6 +66,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
                     tokenManager.saveToken(body.token)
+                    body.refreshToken?.let { tokenManager.saveRefreshToken(it) }
                     tokenManager.saveUsername(body.username)
                     _uiState.value = AuthUiState.Success(body.message)
                 } else {

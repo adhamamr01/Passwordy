@@ -33,7 +33,11 @@ authorization) lives in the backend.
 ## Architecture
 - **Backend is layered:** `controller` (HTTP only) → `service` (business logic + ownership
   checks) → `repository` (Spring Data JPA). Controllers stay thin and delegate everything.
-- **Auth:** stateless JWT (24h). `JwtAuthenticationFilter` populates the security context;
+- **Auth:** short-lived access JWT (~15 min) + a long-lived **rotating refresh token**
+  (`RefreshToken`, stored as a SHA-256 hash). `/api/auth/refresh` rotates it, `/api/auth/logout`
+  revokes it, and a password reset revokes all of a user's refresh tokens. The Android client
+  refreshes silently via an OkHttp `Authenticator` (`TokenAuthenticator`) + `AuthInterceptor`.
+  `JwtAuthenticationFilter` populates the security context;
   `SecurityConfig` permits `/api/auth/**` and `/api/password/generate(-pin)` and authenticates
   the rest. Master passwords are BCrypt-hashed; stored passwords are AES-256-GCM encrypted
   (fresh IV per entry) and only decrypted on the explicit `/api/passwords/{id}/decrypt` route.

@@ -99,10 +99,24 @@ Authenticate with username + master password.
 { "username": "alice", "masterPassword": "Str0ng!Pass" }
 ```
 
-**Response `200 OK`** — an `AuthResponse` (token, username, email, message).
+**Response `200 OK`** — an `AuthResponse`: `{ token, refreshToken, username, email, message }`.
+`token` is a **short-lived access JWT** (~15 min); `refreshToken` is a long-lived opaque token.
 `401` for an unknown username or wrong password (one generic message). `403` if the credentials
 are correct but the email isn't verified yet (*"Please verify your email before logging in"*) —
 returned only after a correct password, so it doesn't reveal whether an account exists.
+
+---
+
+### `POST /api/auth/refresh`
+Exchange a valid refresh token for a new access token. The refresh token is **rotated** — the
+presented one is consumed and a new one returned, so a replayed token is rejected.
+**Request:** `{ "refreshToken": "<token>" }`. **Response `200 OK`** — a new `AuthResponse`
+(new `token` + new `refreshToken`). `401` if the refresh token is unknown/expired/already used.
+
+### `POST /api/auth/logout`
+Revoke a refresh token (ends that session). **Request:** `{ "refreshToken": "<token>" }`.
+**Response `200 OK`** — `{ "message": "Logged out." }`. A password reset revokes *all* of a
+user's refresh tokens.
 
 ---
 
