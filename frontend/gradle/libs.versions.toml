@@ -1,16 +1,14 @@
-# Version catalog — RECONSTRUCTED best-effort (the original was never committed).
-#
-# Gradle 9.3.0 was recovered from the build cache (gradle/wrapper/gradle-wrapper.properties).
-# The AGP and Kotlin versions below are INFERRED and must be confirmed by a Gradle sync in
-# Android Studio — adjust them if sync reports a Gradle/AGP/Kotlin incompatibility.
+# Version catalog — reconstructed (the original was never committed), then verified by an
+# Android Studio Gradle sync: Gradle 9.4.1 (see gradle/wrapper/gradle-wrapper.properties),
+# AGP 9.2.1, Kotlin 2.2.10.
 #
 # Only these three plugins are referenced via the catalog (`libs.plugins.*` in build.gradle.kts);
 # all library dependencies are pinned directly in app/build.gradle.kts, so they are not listed here.
 # The kotlin-compose plugin (org.jetbrains.kotlin.plugin.compose) requires Kotlin 2.0+, which is
 # why the old composeOptions.kotlinCompilerExtensionVersion was dropped.
 [versions]
-agp = "8.13.0"
-kotlin = "2.0.21"
+agp = "9.2.1"
+kotlin = "2.2.10"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
