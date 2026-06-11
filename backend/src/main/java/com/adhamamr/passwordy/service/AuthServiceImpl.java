@@ -5,9 +5,11 @@ import com.adhamamr.passwordy.dto.LoginRequest;
 import com.adhamamr.passwordy.dto.RegisterRequest;
 import com.adhamamr.passwordy.exception.BadRequestException;
 import com.adhamamr.passwordy.exception.InvalidCredentialsException;
+import com.adhamamr.passwordy.exception.TooManyRequestsException;
 import com.adhamamr.passwordy.model.User;
 import com.adhamamr.passwordy.repository.UserRepository;
 import com.adhamamr.passwordy.security.JwtUtil;
+import com.adhamamr.passwordy.security.RateLimitingService;
 import com.adhamamr.passwordy.util.MasterPasswordValidator;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,10 @@ import org.springframework.transaction.annotation.Transactional;
  * the supplied master password against the stored hash (never decrypting) and issues a JWT.
  * Existing BCrypt hashes are transparently upgraded to Argon2id on first successful login
  * (lazy rehash migration).
+ *
+ * <p>Login is additionally throttled per account via {@link RateLimitingService}: this
+ * complements the filter's IP tier so that brute-forcing one account is capped even when the
+ * attacker rotates source IPs.
  */
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -28,6 +34,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final RateLimitingService rateLimitingService;
 
     /**
      * A throwaway Argon2id hash used to spend the same time hashing when an unknown username
@@ -38,10 +45,12 @@ public class AuthServiceImpl implements AuthService {
 
     public AuthServiceImpl(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
-                           JwtUtil jwtUtil) {
+                           JwtUtil jwtUtil,
+                           RateLimitingService rateLimitingService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.rateLimitingService = rateLimitingService;
         this.dummyHash = passwordEncoder.encode("timing-guard-not-a-real-password");
     }
 
@@ -74,6 +83,11 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request) {
+        // Account-level throttle (keyed by the submitted username), independent of source IP.
+        if (!rateLimitingService.tryConsumeLogin(request.username())) {
+            throw new TooManyRequestsException("Too many login attempts, please try again later");
+        }
+
         User user = userRepository.findByUsername(request.username()).orElse(null);
         if (user == null) {
             // Hash against a dummy so an unknown username takes the same time as a wrong

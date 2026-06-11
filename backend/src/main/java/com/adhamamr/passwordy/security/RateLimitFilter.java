@@ -8,6 +8,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
@@ -28,6 +30,8 @@ import java.util.Map;
  * {@code Retry-After} header, using the same {@code {"error": "..."}} body as the rest of the API.
  */
 public class RateLimitFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
 
     private final RateLimitProperties properties;
     private final RateLimitingService rateLimitingService;
@@ -53,7 +57,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         Tier tier = resolveTier(request);
-        ConsumptionProbe probe = rateLimitingService.tryConsume(tier, resolveKey(request, tier));
+        String key = resolveKey(request, tier);
+        ConsumptionProbe probe = rateLimitingService.tryConsume(tier, key);
 
         if (probe.isConsumed()) {
             response.setHeader("X-Rate-Limit-Remaining", String.valueOf(probe.getRemainingTokens()));
@@ -62,6 +67,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         long retryAfter = Duration.ofNanos(probe.getNanosToWaitForRefill()).toSeconds();
+        log.warn("Rate limit exceeded: tier={} key={} path={} retryAfter={}s",
+                tier, key, request.getRequestURI(), retryAfter);
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setHeader("Retry-After", String.valueOf(retryAfter));
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

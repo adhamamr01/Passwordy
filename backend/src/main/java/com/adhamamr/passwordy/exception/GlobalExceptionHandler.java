@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
  *   <li>{@link InvalidCredentialsException} → 401 (failed login)</li>
  *   <li>{@link UnauthorizedException} → 403</li>
  *   <li>{@link ResourceNotFoundException} → 404</li>
+ *   <li>{@link TooManyRequestsException} → 429 (account-level rate limit)</li>
  *   <li>any other {@link RuntimeException} → 500</li>
  * </ul>
  *
@@ -59,6 +60,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleNotFound(ResourceNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", safeMessage(ex)));
+    }
+
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<Map<String, String>> handleTooManyRequests(TooManyRequestsException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", safeMessage(ex)));
     }
 
     @ExceptionHandler(RuntimeException.class)
