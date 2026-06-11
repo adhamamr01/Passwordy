@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       # AGP 9.2 / Gradle 9.4 toolchain — JDK 21.
       - name: Set up JDK 21
