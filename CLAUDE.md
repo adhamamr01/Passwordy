@@ -103,6 +103,31 @@ authorization) lives in the backend.
   (Gradle 9.4.1, AGP 9.2.1, Kotlin 2.2.10), and a **`frontend-ci.yml`** workflow builds the app on
   JDK 21 (`testDebugUnitTest assembleDebug`).
 
+## Auth & sessions (full flow)
+- **Tokens:** short-lived access JWT (~15 min, `jwt.expiration`) + long-lived **rotating refresh
+  token** (`RefreshToken`, SHA-256 hash stored). `/api/auth/refresh` rotates, `/api/auth/logout`
+  revokes, password reset revokes all of a user's tokens. Android refreshes silently via OkHttp
+  `AuthInterceptor` + `TokenAuthenticator` (DECISIONS.md §14).
+- **Lifecycle endpoints** (all enumeration-safe where relevant): `register` (202, emailed
+  verification — §13), `verify`, `login` (→ 2FA challenge when enabled), `forgot-password` /
+  `reset-password` / `resend-verification` (§7/§13), `refresh`, `logout`.
+- **2FA:** opt-in TOTP (`/api/account/2fa/**` to manage, `/api/auth/2fa/verify` for login step 2);
+  AES-encrypted secret, hashed single-use recovery codes (§15).
+- **Password hygiene:** Argon2id hashing with lazy BCrypt→Argon2 upgrade on login; strength rules
+  (`MasterPasswordValidator`) + HIBP breached-password block (§16).
+
+## Open follow-ups (tracked tasks)
+- **Frontend auth flows are CI-compiled but not device-run** — do an Android Studio emulator pass
+  (silent refresh, 2FA enroll/login, reset, logout) before relying on them.
+- 2FA enrolment shows the secret + `otpauth://` URI; **render it as a QR** code.
+- **Recovery-code regeneration** endpoint + UI (not yet exposed).
+- Extend the **breach check to stored vault entries** (warn, don't block).
+- **Configure real SMTP** + carry the new short `jwt.expiration` / `auth.refresh-ttl-days` into the
+  gitignored profiles; rotate throwaway secrets before production.
+
+> State: backend **109 tests** (3 Docker-guarded skips locally; run on CI). Two CI workflows
+> (backend + frontend) plus CodeQL + Dependabot guard the repo. `DECISIONS.md` runs to §16.
+
 ## Docs
 - `README.md` — overview & quick start
 - `DECISIONS.md` — architecture & design rationale (numbered sections)
