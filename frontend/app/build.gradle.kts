@@ -103,6 +103,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation("androidx.navigation:navigation-compose:2.7.6")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    // Process-wide lifecycle (app foreground/background) for the inactivity auto-lock.
+    implementation("androidx.lifecycle:lifecycle-process:2.7.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
