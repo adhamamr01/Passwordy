@@ -19,6 +19,7 @@ import com.adhamamr.passwordy.model.RecoveryCode;
 import com.adhamamr.passwordy.model.TokenPurpose;
 import com.adhamamr.passwordy.model.User;
 import com.adhamamr.passwordy.model.VerificationToken;
+import com.adhamamr.passwordy.repository.PasswordRepository;
 import com.adhamamr.passwordy.repository.RecoveryCodeRepository;
 import com.adhamamr.passwordy.repository.UserRepository;
 import com.adhamamr.passwordy.repository.VerificationTokenRepository;
@@ -73,6 +74,7 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final TotpService totpService;
     private final RecoveryCodeRepository recoveryCodeRepository;
+    private final PasswordRepository passwordRepository;
     private final EncryptionService encryptionService;
     private final BreachCheckService breachCheckService;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -97,6 +99,7 @@ public class AuthServiceImpl implements AuthService {
                            RefreshTokenService refreshTokenService,
                            TotpService totpService,
                            RecoveryCodeRepository recoveryCodeRepository,
+                           PasswordRepository passwordRepository,
                            EncryptionService encryptionService,
                            BreachCheckService breachCheckService,
                            @Value("${app.verification.token-ttl-hours:24}") long tokenTtlHours) {
@@ -109,6 +112,7 @@ public class AuthServiceImpl implements AuthService {
         this.refreshTokenService = refreshTokenService;
         this.totpService = totpService;
         this.recoveryCodeRepository = recoveryCodeRepository;
+        this.passwordRepository = passwordRepository;
         this.encryptionService = encryptionService;
         this.breachCheckService = breachCheckService;
         this.tokenTtl = Duration.ofHours(tokenTtlHours);
@@ -351,6 +355,25 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidCredentialsException("Invalid two-factor code");
         }
         return issueTokens(user, "Login successful");
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse deleteAccount(String username, String masterPassword) {
+        User user = requireUser(username);
+        // Re-confirm the master password so a stolen/leftover access token can't nuke the account.
+        if (!passwordEncoder.matches(masterPassword, user.getMasterPasswordHash())) {
+            throw new InvalidCredentialsException("Invalid password");
+        }
+
+        // Children carry a non-null user_id with no cascade, so remove them before the user row.
+        passwordRepository.deleteByUser(user);
+        recoveryCodeRepository.deleteByUser(user);
+        tokenRepository.deleteByUser(user);
+        refreshTokenService.revokeAll(user);
+        userRepository.delete(user);
+
+        return new MessageResponse("Your account and all associated data have been permanently deleted.");
     }
 
     private User requireUser(String username) {

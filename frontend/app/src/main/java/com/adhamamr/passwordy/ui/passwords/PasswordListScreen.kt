@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
@@ -15,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adhamamr.passwordy.data.local.TokenManager
@@ -24,6 +26,7 @@ import com.adhamamr.passwordy.data.repository.AuthRepository
 import com.adhamamr.passwordy.data.repository.PasswordRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +48,22 @@ fun PasswordListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
 
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteAccountDialog) {
+        DeleteAccountDialog(
+            onDismiss = { showDeleteAccountDialog = false },
+            onConfirmed = {
+                // Account already deleted server-side; clear local session and return to login.
+                scope.launch {
+                    tokenManager.clearToken()
+                    showDeleteAccountDialog = false
+                    onLogout()
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -53,6 +72,10 @@ fun PasswordListScreen(
                     // Two-factor settings
                     IconButton(onClick = onOpenTwoFactor) {
                         Icon(Icons.Default.Lock, contentDescription = "Two-factor authentication")
+                    }
+                    // Delete account
+                    IconButton(onClick = { showDeleteAccountDialog = true }) {
+                        Icon(Icons.Default.DeleteForever, contentDescription = "Delete account")
                     }
                     // Logout button
                     IconButton(
@@ -158,6 +181,94 @@ fun PasswordListScreen(
                 }
             }
         }
+    }
+}
+
+/**
+ * Confirmation dialog for permanent account deletion. Requires the master password to be
+ * re-entered (the backend re-verifies it), warns that the action is irreversible, and calls
+ * [onConfirmed] only after the server confirms the deletion.
+ */
+@Composable
+private fun DeleteAccountDialog(
+    onDismiss: () -> Unit,
+    onConfirmed: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var password by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var deleting by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = { if (!deleting) onDismiss() },
+        title = { Text("Delete account?") },
+        text = {
+            Column {
+                Text(
+                    "This permanently deletes your account and all saved passwords. " +
+                        "This cannot be undone. Enter your master password to confirm."
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it; error = null },
+                    label = { Text("Master password") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    isError = error != null,
+                    enabled = !deleting,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (error != null) {
+                    Text(
+                        text = error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !deleting && password.isNotBlank(),
+                onClick = {
+                    scope.launch {
+                        deleting = true
+                        error = null
+                        try {
+                            val response = AuthRepository().deleteAccount(password)
+                            if (response.isSuccessful) {
+                                onConfirmed()
+                            } else {
+                                error = parseDeleteError(response.errorBody()?.string())
+                                deleting = false
+                            }
+                        } catch (e: Exception) {
+                            error = e.message ?: "Network error"
+                            deleting = false
+                        }
+                    }
+                }
+            ) {
+                Text("Delete", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(enabled = !deleting, onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+/** Pulls the {"error": "..."} message from a backend error body, falling back to a generic line. */
+private fun parseDeleteError(body: String?): String {
+    val fallback = "Couldn't delete account"
+    return try {
+        if (!body.isNullOrBlank()) JSONObject(body).optString("error", fallback) else fallback
+    } catch (e: Exception) {
+        fallback
     }
 }
 

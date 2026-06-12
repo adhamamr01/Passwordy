@@ -42,6 +42,11 @@ interface ApiService {
     @POST("api/account/2fa/disable")
     suspend fun disableTotp(@Body request: TotpCodeRequest): Response<MessageResponse>
 
+    // DELETE with a body (the master-password re-confirmation); @HTTP is needed since @DELETE
+    // doesn't accept @Body.
+    @HTTP(method = "DELETE", path = "api/account", hasBody = true)
+    suspend fun deleteAccount(@Body request: DeleteAccountRequest): Response<MessageResponse>
+
     @POST("api/password/generate")
     suspend fun generatePassword(@Body request: PasswordGenerationRequest): Response<GeneratedPasswordResponse>
 

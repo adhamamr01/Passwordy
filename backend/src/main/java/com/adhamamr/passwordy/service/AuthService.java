@@ -50,4 +50,10 @@ public interface AuthService {
 
     /** Login step 2: verifies a TOTP or recovery code and issues tokens. */
     AuthResponse verifyTwoFactor(TwoFactorVerifyRequest request);
+
+    /**
+     * Permanently deletes the account and all data owned by it (passwords, refresh tokens,
+     * recovery codes, outstanding verification tokens) after re-confirming the master password.
+     */
+    MessageResponse deleteAccount(String username, String masterPassword);
 }

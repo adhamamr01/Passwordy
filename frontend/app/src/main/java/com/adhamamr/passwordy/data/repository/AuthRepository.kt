@@ -1,6 +1,7 @@
 package com.adhamamr.passwordy.data.repository
 
 import com.adhamamr.passwordy.data.model.AuthResponse
+import com.adhamamr.passwordy.data.model.DeleteAccountRequest
 import com.adhamamr.passwordy.data.model.ForgotPasswordRequest
 import com.adhamamr.passwordy.data.model.LoginRequest
 import com.adhamamr.passwordy.data.model.MessageResponse
@@ -51,4 +52,8 @@ class AuthRepository {
     suspend fun enableTotp(code: String): Response<TotpEnableResponse> = api.enableTotp(TotpCodeRequest(code))
 
     suspend fun disableTotp(code: String): Response<MessageResponse> = api.disableTotp(TotpCodeRequest(code))
+
+    /** Permanently deletes the signed-in account (re-confirmed by master password). */
+    suspend fun deleteAccount(masterPassword: String): Response<MessageResponse> =
+        api.deleteAccount(DeleteAccountRequest(masterPassword))
 }

@@ -50,6 +50,7 @@ class AuthServiceImplTest {
     @Mock RefreshTokenService refreshTokenService;
     @Mock TotpService totpService;
     @Mock com.adhamamr.passwordy.repository.RecoveryCodeRepository recoveryCodeRepository;
+    @Mock com.adhamamr.passwordy.repository.PasswordRepository passwordRepository;
     @Mock EncryptionService encryptionService;
     @Mock BreachCheckService breachCheckService;
 
@@ -62,7 +63,7 @@ class AuthServiceImplTest {
         lenient().when(breachCheckService.isBreached(anyString())).thenReturn(false);
         authService = new AuthServiceImpl(userRepository, tokenRepository, passwordEncoder, jwtUtil,
                 rateLimitingService, emailService, refreshTokenService, totpService,
-                recoveryCodeRepository, encryptionService, breachCheckService, 24L);
+                recoveryCodeRepository, passwordRepository, encryptionService, breachCheckService, 24L);
     }
 
     private User verifiedUser() {
@@ -408,6 +409,37 @@ class AuthServiceImplTest {
 
         assertThatThrownBy(() -> authService.login(new LoginRequest("alice", "wrong")))
                 .isInstanceOf(InvalidCredentialsException.class);
+    }
+
+    // --- delete account ---
+
+    @Test
+    void deleteAccount_correctPassword_purgesAllDataThenUser() {
+        User user = verifiedUser();
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("StrongP@ss1", "$hashed$")).thenReturn(true);
+
+        MessageResponse response = authService.deleteAccount("alice", "StrongP@ss1");
+
+        assertThat(response.message()).contains("permanently deleted");
+        verify(passwordRepository).deleteByUser(user);
+        verify(recoveryCodeRepository).deleteByUser(user);
+        verify(tokenRepository).deleteByUser(user);
+        verify(refreshTokenService).revokeAll(user);
+        verify(userRepository).delete(user);
+    }
+
+    @Test
+    void deleteAccount_wrongPassword_throwsAndDeletesNothing() {
+        User user = verifiedUser();
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong", "$hashed$")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.deleteAccount("alice", "wrong"))
+                .isInstanceOf(InvalidCredentialsException.class);
+        verify(userRepository, never()).delete(any());
+        verify(passwordRepository, never()).deleteByUser(any());
+        verify(refreshTokenService, never()).revokeAll(any());
     }
 
     @Test

@@ -142,6 +142,14 @@ are stored). `400` on a wrong code.
 ### `POST /api/account/2fa/disable`  *(auth required)*
 **Request:** `{ "code": "<6-digit>" }`. Disables 2FA and clears recovery codes. `400` on a wrong code.
 
+### `DELETE /api/account`  *(auth required)*
+Permanently delete the signed-in account and **all** data it owns (passwords, refresh tokens,
+recovery codes, outstanding verification tokens). **Request (body):**
+`{ "masterPassword": "<current master password>" }` — re-confirmed server-side so a stolen access
+token alone can't delete the account. **Response `200 OK`** —
+`{ "message": "Your account and all associated data have been permanently deleted." }`.
+`401` if the password is wrong.
+
 ---
 
 ### `POST /api/auth/forgot-password`
