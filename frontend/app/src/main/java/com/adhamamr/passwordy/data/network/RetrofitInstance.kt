@@ -17,11 +17,12 @@ import java.util.concurrent.TimeUnit
  * recurse on 401), and the main [api] which attaches the access token ([AuthInterceptor]) and
  * silently refreshes it on 401 ([TokenAuthenticator]).
  *
- * [BASE_URL] defaults to `10.0.2.2` — the Android emulator's alias for the host's `localhost`.
+ * [BASE_URL] is supplied per build type via `BuildConfig` (debug → the emulator's `10.0.2.2`
+ * host alias over HTTP; release → the production HTTPS backend).
  */
 object RetrofitInstance {
 
-    private const val BASE_URL = "http://10.0.2.2:8080/"
+    private const val BASE_URL = BuildConfig.BASE_URL
 
     private lateinit var tokenManager: TokenManager
 
