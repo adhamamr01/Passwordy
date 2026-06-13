@@ -3,14 +3,16 @@
 _Last updated: 2026-06-13_
 
 This Privacy Policy explains what data the **Passwordy** application and backend service (the
-"Service"), provided by **Adham Amr** ("we", "us", "our"), collects, why, and your rights over it.
+"Service"), provided by **Adham Mohamed Amr Farouk Aboelela** ("we", "us", "our"), collects, why,
+and your rights over it.
 It is written to reflect how the Service actually works.
 
 > **Note.** This document was drafted for the project and is not legal advice. Having it reviewed
 > by a qualified lawyer before production launch is recommended.
 
 ## 1. Who is responsible
-The data controller for the Service is Adham Amr. Contact for any privacy question, request, or
+The data controller for the Service is Adham Mohamed Amr Farouk Aboelela. Contact for any privacy
+question, request, or
 complaint: **adhamamr01@gmail.com**.
 
 ## 2. What we collect

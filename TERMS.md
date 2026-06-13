@@ -3,7 +3,8 @@
 _Last updated: 2026-06-13_
 
 These Terms of Service ("Terms") govern your use of the **Passwordy** application and backend
-service (together, the "Service"), provided by **Adham Amr** ("we", "us", "our"). By creating an
+service (together, the "Service"), provided by **Adham Mohamed Amr Farouk Aboelela** ("we", "us",
+"our"). By creating an
 account or using the Service you agree to these Terms. If you do not agree, do not use the Service.
 
 > **Note.** This document was drafted for the project and is not legal advice. Having it reviewed
@@ -57,7 +58,8 @@ particular purpose, and non-infringement. We do not warrant that the Service wil
 error-free, or that data loss will never occur.
 
 ## 8. Limitation of liability
-To the maximum extent permitted by law, Adham Amr ("we") will not be liable for any indirect,
+To the maximum extent permitted by law, Adham Mohamed Amr Farouk Aboelela ("we") will not be liable
+for any indirect,
 incidental, special, consequential, or punitive damages, or any loss of data, arising from your use
 of (or inability to use) the Service. Where liability cannot be excluded, it is limited to the
 greater of the amount you paid us for the Service in the past 12 months (the Service is currently
