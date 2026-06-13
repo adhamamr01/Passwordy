@@ -442,6 +442,29 @@ class AuthServiceImplTest {
         verify(refreshTokenService, never()).revokeAll(any());
     }
 
+    // --- data export ---
+
+    @Test
+    void exportAccount_returnsProfileAndDecryptedPasswords() throws Exception {
+        User user = verifiedUser();
+        com.adhamamr.passwordy.model.Password entry = new com.adhamamr.passwordy.model.Password();
+        entry.setLabel("GitHub");
+        entry.setUsername("alice");
+        entry.setValue("enc-value");
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(passwordRepository.findByUserUsername("alice")).thenReturn(java.util.List.of(entry));
+        when(encryptionService.decrypt("enc-value")).thenReturn("s3cret");
+
+        var export = authService.exportAccount("alice");
+
+        assertThat(export.account().username()).isEqualTo("alice");
+        assertThat(export.account().email()).isEqualTo("alice@example.com");
+        assertThat(export.passwords()).hasSize(1);
+        assertThat(export.passwords().get(0).label()).isEqualTo("GitHub");
+        assertThat(export.passwords().get(0).password()).isEqualTo("s3cret"); // decrypted
+        assertThat(export.exportedAt()).isNotNull();
+    }
+
     @Test
     void login_outdatedHash_triggersRehash() {
         User user = verifiedUser();

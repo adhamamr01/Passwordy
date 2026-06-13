@@ -1,5 +1,6 @@
 package com.adhamamr.passwordy.service;
 
+import com.adhamamr.passwordy.dto.AccountExportResponse;
 import com.adhamamr.passwordy.dto.AuthResponse;
 import com.adhamamr.passwordy.dto.ForgotPasswordRequest;
 import com.adhamamr.passwordy.dto.LoginRequest;
@@ -56,4 +57,10 @@ public interface AuthService {
      * recovery codes, outstanding verification tokens) after re-confirming the master password.
      */
     MessageResponse deleteAccount(String username, String masterPassword);
+
+    /**
+     * Exports everything the service holds about the user — profile plus all vault entries with
+     * their decrypted secrets (GDPR data portability).
+     */
+    AccountExportResponse exportAccount(String username);
 }

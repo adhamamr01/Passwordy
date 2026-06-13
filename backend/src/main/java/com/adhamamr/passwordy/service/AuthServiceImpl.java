@@ -1,5 +1,6 @@
 package com.adhamamr.passwordy.service;
 
+import com.adhamamr.passwordy.dto.AccountExportResponse;
 import com.adhamamr.passwordy.dto.AuthResponse;
 import com.adhamamr.passwordy.dto.ForgotPasswordRequest;
 import com.adhamamr.passwordy.dto.LoginRequest;
@@ -374,6 +375,25 @@ public class AuthServiceImpl implements AuthService {
         userRepository.delete(user);
 
         return new MessageResponse("Your account and all associated data have been permanently deleted.");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AccountExportResponse exportAccount(String username) {
+        User user = requireUser(username);
+
+        List<AccountExportResponse.ExportedPassword> passwords =
+                passwordRepository.findByUserUsername(username).stream()
+                        .map(p -> new AccountExportResponse.ExportedPassword(
+                                p.getLabel(), p.getUsername(), decrypt(p.getValue()),
+                                p.getUrl(), p.getNotes(), p.getCategory(), p.isFavorite(),
+                                p.getCreatedAt(), p.getUpdatedAt()))
+                        .toList();
+
+        AccountExportResponse.ExportedAccount account = new AccountExportResponse.ExportedAccount(
+                user.getUsername(), user.getEmail(), user.isTotpEnabled(), user.getCreatedAt());
+
+        return new AccountExportResponse(account, passwords, Instant.now());
     }
 
     private User requireUser(String username) {

@@ -150,6 +150,23 @@ token alone can't delete the account. **Response `200 OK`** —
 `{ "message": "Your account and all associated data have been permanently deleted." }`.
 `401` if the password is wrong.
 
+### `GET /api/account/export`  *(auth required)*
+GDPR data export. Returns the user's profile plus **all** vault entries with their **decrypted**
+secrets, as JSON. **Response `200 OK`** —
+```json
+{
+  "account": { "username": "alice", "email": "alice@example.com",
+               "twoFactorEnabled": false, "createdAt": "2026-01-02T03:04:05Z" },
+  "passwords": [
+    { "label": "GitHub", "username": "alice", "password": "s3cret",
+      "url": "https://github.com", "notes": null, "category": "dev",
+      "favorite": true, "createdAt": "…", "updatedAt": "…" }
+  ],
+  "exportedAt": "2026-06-13T12:00:00Z"
+}
+```
+No password hash is ever included. Served only to the authenticated owner over TLS.
+
 ---
 
 ### `POST /api/auth/forgot-password`
