@@ -1,0 +1,14 @@
+# Build output (re-built inside the image) and IDE cruft.
+target/
+*.iml
+.idea/
+
+# Tests are run in CI, not during the image build.
+src/test/
+
+# Never copy real secrets into the build context (these are gitignored too).
+src/main/resources/application-local.properties
+src/main/resources/application-docker.properties
+
+# Local dev stack — not part of the app image.
+docker-compose.yml
