@@ -3,12 +3,11 @@
 _Last updated: 2026-06-13_
 
 These Terms of Service ("Terms") govern your use of the **Passwordy** application and backend
-service (together, the "Service"). By creating an account or using the Service you agree to these
-Terms. If you do not agree, do not use the Service.
+service (together, the "Service"), provided by **Adham Amr** ("we", "us", "our"). By creating an
+account or using the Service you agree to these Terms. If you do not agree, do not use the Service.
 
-> **Template notice.** This document is a starting point drafted for the project, not legal advice.
-> Have it reviewed by a qualified lawyer and fill in the bracketed `[…]` placeholders before
-> publishing or shipping to production.
+> **Note.** This document was drafted for the project and is not legal advice. Having it reviewed
+> by a qualified lawyer before production launch is recommended.
 
 ## 1. The Service
 Passwordy is a personal password manager. It lets you store, generate, and retrieve credentials.
@@ -20,8 +19,9 @@ handled.
 - You must provide a valid email address and verify it before logging in.
 - You are responsible for keeping your master password secret. **We cannot recover it for you** —
   if you lose it, you can reset it via your verified email, which begins a new vault.
-- You must be old enough to form a binding contract in your jurisdiction (at least [16/18] years
-  old, or the age of digital consent where you live).
+- The Service is a general-audience utility and is not directed to children under 13. You must be
+  old enough to form a binding contract in your jurisdiction (or have your parent/guardian's
+  consent).
 - One person or entity per account; do not share credentials to the Service itself.
 
 ## 3. Acceptable use
@@ -29,7 +29,7 @@ You agree **not** to:
 - use the Service to store, generate, or transmit unlawful content;
 - attempt to access another user's account or data;
 - probe, scan, or test the vulnerability of the Service except under an authorized security
-  assessment (see SECURITY/responsible disclosure at `[security contact]`);
+  assessment (responsible-disclosure contact: adhamamr01@gmail.com);
 - disrupt the Service (e.g. denial-of-service, circumventing rate limits), or use it to build a
   competing product by scraping.
 
@@ -47,7 +47,7 @@ responsible for using a strong, unique master password and enabling two-factor a
 
 ## 6. Availability & changes
 The Service is provided on an "as available" basis. We may modify, suspend, or discontinue features,
-and we may update these Terms. Material changes will be communicated by `[email / in-app notice]`.
+and we may update these Terms. Material changes will be communicated by email or an in-app notice.
 Continued use after changes take effect constitutes acceptance.
 
 ## 7. Disclaimer of warranties
@@ -57,17 +57,19 @@ particular purpose, and non-infringement. We do not warrant that the Service wil
 error-free, or that data loss will never occur.
 
 ## 8. Limitation of liability
-To the maximum extent permitted by law, `[Provider name]` will not be liable for any indirect,
+To the maximum extent permitted by law, Adham Amr ("we") will not be liable for any indirect,
 incidental, special, consequential, or punitive damages, or any loss of data, arising from your use
-of (or inability to use) the Service. Where liability cannot be excluded, it is limited to
-`[the amount you paid in the last 12 months / the minimum permitted by law]`.
+of (or inability to use) the Service. Where liability cannot be excluded, it is limited to the
+greater of the amount you paid us for the Service in the past 12 months (the Service is currently
+provided free of charge) or USD 50.
 
 ## 9. Termination
 You may stop using the Service and delete your account at any time. We may suspend or terminate
 access if you materially breach these Terms or use the Service unlawfully.
 
 ## 10. Governing law
-These Terms are governed by the laws of `[jurisdiction]`, without regard to conflict-of-laws rules.
+These Terms are governed by the laws of the Arab Republic of Egypt, without regard to
+conflict-of-laws rules.
 
 ## 11. Contact
-Questions about these Terms: `[support email]`.
+Questions about these Terms: adhamamr01@gmail.com.

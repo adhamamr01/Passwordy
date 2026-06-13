@@ -1,6 +1,9 @@
 package com.adhamamr.passwordy.ui.passwords
 
 import android.content.Context
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
@@ -24,6 +28,7 @@ import com.adhamamr.passwordy.data.model.PasswordResponse
 import com.adhamamr.passwordy.data.network.RetrofitInstance
 import com.adhamamr.passwordy.data.repository.AuthRepository
 import com.adhamamr.passwordy.data.repository.PasswordRepository
+import com.google.gson.GsonBuilder
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -50,6 +55,41 @@ fun PasswordListScreen(
 
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
+    // Holds the fetched export JSON until the user picks where to save it.
+    var pendingExportJson by remember { mutableStateOf<String?>(null) }
+    val saveExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        val json = pendingExportJson
+        if (uri != null && json != null) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
+            }.onSuccess {
+                Toast.makeText(context, "Data exported", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, "Couldn't save export", Toast.LENGTH_SHORT).show()
+            }
+        }
+        pendingExportJson = null
+    }
+
+    fun exportData() {
+        scope.launch {
+            try {
+                val response = AuthRepository().exportAccount()
+                val body = response.body()
+                if (response.isSuccessful && body != null) {
+                    pendingExportJson = GsonBuilder().setPrettyPrinting().create().toJson(body)
+                    saveExportLauncher.launch("passwordy-export.json")
+                } else {
+                    Toast.makeText(context, "Couldn't export data", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, e.message ?: "Network error", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     if (showDeleteAccountDialog) {
         DeleteAccountDialog(
             onDismiss = { showDeleteAccountDialog = false },
@@ -72,6 +112,10 @@ fun PasswordListScreen(
                     // Two-factor settings
                     IconButton(onClick = onOpenTwoFactor) {
                         Icon(Icons.Default.Lock, contentDescription = "Two-factor authentication")
+                    }
+                    // Export my data (GDPR)
+                    IconButton(onClick = { exportData() }) {
+                        Icon(Icons.Default.Download, contentDescription = "Export my data")
                     }
                     // Delete account
                     IconButton(onClick = { showDeleteAccountDialog = true }) {

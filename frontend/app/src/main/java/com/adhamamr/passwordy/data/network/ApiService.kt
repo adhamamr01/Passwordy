@@ -47,6 +47,9 @@ interface ApiService {
     @HTTP(method = "DELETE", path = "api/account", hasBody = true)
     suspend fun deleteAccount(@Body request: DeleteAccountRequest): Response<MessageResponse>
 
+    @GET("api/account/export")
+    suspend fun exportAccount(): Response<AccountExportResponse>
+
     @POST("api/password/generate")
     suspend fun generatePassword(@Body request: PasswordGenerationRequest): Response<GeneratedPasswordResponse>
 
