@@ -61,7 +61,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()  // register/login
                         .requestMatchers("/api/password/generate", "/api/password/generate-pin").permitAll()  // generation utilities
-                        .anyRequest().authenticated()  // everything else, incl. /api/password/categories
+                        // Health (+ liveness/readiness probes) is public so load balancers and
+                        // uptime monitors can poll it; detailed health is gated (show-details=when-authorized).
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        .anyRequest().authenticated()  // everything else, incl. /api/password/categories and other /actuator endpoints
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)  // No sessions, using JWT
