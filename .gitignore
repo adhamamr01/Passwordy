@@ -20,6 +20,9 @@ Thumbs.db
 # Environment
 .env
 *.env
+# Production env file for docker-compose.prod.yml (real secrets). Commit only the *.example.
+.env.prod
+*.env.prod
 
 # Local secret config — DO NOT COMMIT (real credentials).
 # Commit the *.example templates instead; copy them and fill in real values locally.

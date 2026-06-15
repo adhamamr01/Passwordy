@@ -152,3 +152,5 @@ Quick map:
 - **[DECISIONS.md](DECISIONS.md)** — architecture and design rationale
 - **[API.md](API.md)** — HTTP API reference
 - **[SETUP.md](SETUP.md)** — environment / database / secrets setup
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** — production deployment (image, hosting, DB/backups, secrets, SMTP, Redis)
+- **[TERMS.md](TERMS.md)** / **[PRIVACY.md](PRIVACY.md)** — Terms of Service and Privacy Policy

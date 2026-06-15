@@ -1,0 +1,78 @@
+# Production-style stack: the published backend image + PostgreSQL + Redis.
+#
+#   1. Copy .env.prod.example to .env.prod and fill in real secrets (see DEPLOYMENT.md).
+#   2. docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# All configuration is supplied via environment variables (Spring relaxed binding), so no
+# secrets live in this file. Use a real managed Postgres + scheduled backups in production
+# (see DEPLOYMENT.md §Backups); the postgres service here is a self-hosted starting point.
+
+services:
+  app:
+    image: ${APP_IMAGE:-ghcr.io/adhamamr01/passwordy/backend:latest}
+    container_name: passwordy-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      # Datasource — Flyway migrates, Hibernate validates.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      # Crypto secrets (see DEPLOYMENT.md for generation).
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_SECRET_KEY: ${ENCRYPTION_SECRET_KEY}
+      # Distributed rate-limit store (shared across instances).
+      RATELIMIT_STORE: redis
+      RATELIMIT_REDIS_URL: redis://redis:6379
+      # Public URL + SMTP for verification/reset email.
+      APP_BASE_URL: ${APP_BASE_URL}
+      APP_MAIL_FROM: ${APP_MAIL_FROM}
+      SPRING_MAIL_HOST: ${SMTP_HOST}
+      SPRING_MAIL_PORT: ${SMTP_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SMTP_USERNAME}
+      SPRING_MAIL_PASSWORD: ${SMTP_PASSWORD}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+    ports:
+      - "8080:8080"
+    # No container HEALTHCHECK here (the slim JRE image ships no curl/wget). Point your load
+    # balancer / uptime monitor at GET /actuator/health instead — it's public and returns UP.
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: passwordy-postgres-prod
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - passwordy-pgdata-prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: passwordy-redis-prod
+    command: ["redis-server", "--save", "60", "1"]
+    volumes:
+      - passwordy-redisdata-prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  passwordy-pgdata-prod:
+  passwordy-redisdata-prod:

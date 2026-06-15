@@ -133,3 +133,5 @@ authorization) lives in the backend.
 - `DECISIONS.md` — architecture & design rationale (numbered sections)
 - `API.md` — HTTP API reference (routes, request/response shapes, status codes)
 - `SETUP.md` — environment / database / secrets setup
+- `DEPLOYMENT.md` — production deployment (image, hosting, DB/backups, secrets, SMTP, Redis)
+- `TERMS.md` / `PRIVACY.md` — Terms of Service & Privacy Policy; `PLAY_DATA_SAFETY.md` — Play form answers
