@@ -86,7 +86,7 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // Biometric (Fingerprint authentication)
-    implementation("androidx.biometric:biometric:1.2.0-alpha05")
+    implementation("androidx.biometric:biometric:1.4.0-alpha07")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
