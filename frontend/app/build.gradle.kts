@@ -31,6 +31,17 @@ val certPinsProperties = Properties().apply {
 }
 fun certPin(key: String): String = certPinsProperties.getProperty(key, "")
 
+// Crash reporting (Sentry) DSN, from a gitignored `sentry.properties` (copy from
+// sentry.properties.example). Empty (the default without the file) means CrashReporting.init
+// is a no-op — no Sentry project is provisioned for this repo yet.
+val sentryPropertiesFile = rootProject.file("sentry.properties")
+val sentryProperties = Properties().apply {
+    if (sentryPropertiesFile.exists()) {
+        load(FileInputStream(sentryPropertiesFile))
+    }
+}
+val sentryDsn = sentryProperties.getProperty("dsn", "")
+
 android {
     namespace = "com.adhamamr.passwordy"
     compileSdk = 35
@@ -48,6 +59,10 @@ android {
         // Debug is never pinned (it talks to the emulator's plaintext localhost alias).
         buildConfigField("String", "CERT_PIN_PRIMARY", "\"\"")
         buildConfigField("String", "CERT_PIN_BACKUP", "\"\"")
+
+        // Crash reporting DSN — same on every variant; CrashReporting.init still gates on
+        // !DEBUG so a developer's local crashes are never reported, DSN or not.
+        buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
     }
 
     signingConfigs {
@@ -148,6 +163,12 @@ dependencies {
 
     // Biometric (Fingerprint authentication)
     implementation("androidx.biometric:biometric:1.2.0-alpha05")
+
+    // Crash/ANR reporting (Sentry). Initialized only when a DSN is configured — see
+    // cert-pins.properties-style gating in CrashReporting.kt. No Sentry Gradle plugin (that's
+    // for source-context/proguard-mapping upload, which needs an org/project/auth token this
+    // repo doesn't have configured); the SDK alone is enough for crash/ANR capture.
+    implementation("io.sentry:sentry-android:7.20.1")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

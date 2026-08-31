@@ -1,0 +1,11 @@
+# Crash/ANR reporting DSN — copy to `sentry.properties` (gitignored) and fill in once a Sentry
+# project exists for Passwordy. Absent this file (the default), CrashReporting.init() is a no-op
+# and no SDK network calls are made.
+#
+# 1. Create a free project at https://sentry.io (or self-host) — platform: Android.
+# 2. Copy its DSN (Settings → Client Keys (DSN)) below.
+# 3. Rebuild the release variant.
+#
+# Crash reporting is only ever active in release builds (CrashReporting.kt hard-gates on
+# !BuildConfig.DEBUG) — a developer's local crashes never get reported regardless of this file.
+dsn=https://examplePublicKey@o0.ingest.sentry.io/0

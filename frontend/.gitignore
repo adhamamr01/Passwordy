@@ -22,3 +22,7 @@ keystore.properties
 # Certificate pins are environment-specific (tied to the not-yet-provisioned production host);
 # gitignored so the placeholder values in the .example can never be mistaken for real ones.
 cert-pins.properties
+
+# Crash-reporting DSN — not secret exactly, but project-specific and unset until a Sentry
+# project is provisioned; gitignored so a placeholder can't be mistaken for a real one.
+sentry.properties

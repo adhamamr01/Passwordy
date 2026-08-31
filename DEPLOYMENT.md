@@ -84,6 +84,8 @@ service and sets these for you). Also set `ratelimit.trusted-proxies` to your lo
 - [ ] HTTPS terminating in front of the app; `APP_BASE_URL` set to the public URL
 - [ ] Android release `BASE_URL` points at the production host
 - [ ] `frontend/cert-pins.properties` set from the live production cert (§3) and release rebuilt
+- [ ] `frontend/sentry.properties` set from a provisioned Sentry project (crash/ANR reporting;
+      see `sentry.properties.example`) and release rebuilt
 - [ ] Fresh `JWT_SECRET` + `ENCRYPTION_SECRET_KEY` set and backed up
 - [ ] Managed Postgres with automated backups; app starts (Flyway migrate + validate OK)
 - [ ] SMTP configured with SPF/DKIM/DMARC; a test verification email arrives

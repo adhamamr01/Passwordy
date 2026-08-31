@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.adhamamr.passwordy.crash.CrashReporting
 import com.adhamamr.passwordy.data.local.TokenManager
 import com.adhamamr.passwordy.data.network.RetrofitInstance
 import com.adhamamr.passwordy.security.AppLockManager
@@ -14,8 +15,9 @@ import kotlinx.coroutines.launch
 
 /**
  * Initialises the networking layer (which needs a context for the token store) once at startup,
- * and wires the inactivity auto-lock: process foreground/background events drive
- * [AppLockManager], and the stored-token flow keeps it armed only while a session exists.
+ * wires the inactivity auto-lock: process foreground/background events drive [AppLockManager],
+ * and the stored-token flow keeps it armed only while a session exists — and starts crash/ANR
+ * reporting ([CrashReporting], a no-op without a configured DSN or in debug builds).
  */
 class PasswordyApp : Application() {
 
@@ -23,6 +25,7 @@ class PasswordyApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashReporting.init(this)
         RetrofitInstance.init(this)
 
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
