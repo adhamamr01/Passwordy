@@ -18,3 +18,7 @@ local.properties
 keystore.properties
 *.jks
 *.keystore
+
+# Certificate pins are environment-specific (tied to the not-yet-provisioned production host);
+# gitignored so the placeholder values in the .example can never be mistaken for real ones.
+cert-pins.properties

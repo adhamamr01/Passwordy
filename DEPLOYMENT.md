@@ -35,6 +35,12 @@ etc.). Two hard requirements:
   `{"status":"UP"}`). Use `/actuator/health/liveness` and `/actuator/health/readiness` for
   orchestrators.
 
+Once the host + cert exist, also **pin the Android release build to it**: copy
+`frontend/cert-pins.properties.example` to `frontend/cert-pins.properties`, compute the primary
+pin from the live cert (command in the example file) plus a *different* backup pin for the next
+cert you'll rotate to, and rebuild the release. Without `cert-pins.properties` the app is
+unpinned — TLS still applies, just not certificate pinning.
+
 Set the app's public URL via `APP_BASE_URL` (used to build email links) and update the Android
 release `BASE_URL` (`frontend/app/build.gradle.kts`) to match.
 
@@ -77,6 +83,7 @@ service and sets these for you). Also set `ratelimit.trusted-proxies` to your lo
 ## 8. Pre-launch checklist
 - [ ] HTTPS terminating in front of the app; `APP_BASE_URL` set to the public URL
 - [ ] Android release `BASE_URL` points at the production host
+- [ ] `frontend/cert-pins.properties` set from the live production cert (§3) and release rebuilt
 - [ ] Fresh `JWT_SECRET` + `ENCRYPTION_SECRET_KEY` set and backed up
 - [ ] Managed Postgres with automated backups; app starts (Flyway migrate + validate OK)
 - [ ] SMTP configured with SPF/DKIM/DMARC; a test verification email arrives

@@ -19,6 +19,18 @@ val keystoreProperties = Properties().apply {
 }
 val hasReleaseKeystore = keystorePropertiesFile.exists()
 
+// Certificate pinning for the release backend, from a gitignored `cert-pins.properties` (copy
+// from cert-pins.properties.example) so no real pin is hardcoded in source. Absent the file (no
+// production host/cert yet, or a dev machine), the pin fields are empty and RetrofitInstance
+// skips pinning entirely — debug/local builds are never pinned.
+val certPinsFile = rootProject.file("cert-pins.properties")
+val certPinsProperties = Properties().apply {
+    if (certPinsFile.exists()) {
+        load(FileInputStream(certPinsFile))
+    }
+}
+fun certPin(key: String): String = certPinsProperties.getProperty(key, "")
+
 android {
     namespace = "com.adhamamr.passwordy"
     compileSdk = 35
@@ -31,6 +43,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Defaults so BuildConfig.CERT_PIN_* exist on every variant; release overrides both.
+        // Debug is never pinned (it talks to the emulator's plaintext localhost alias).
+        buildConfigField("String", "CERT_PIN_PRIMARY", "\"\"")
+        buildConfigField("String", "CERT_PIN_BACKUP", "\"\"")
     }
 
     signingConfigs {
@@ -54,6 +71,12 @@ android {
             isShrinkResources = true
             // Production backend (HTTPS). Override the placeholder before publishing.
             buildConfigField("String", "BASE_URL", "\"https://api.passwordy.example/\"")
+            // SHA-256 SPKI pins (SubjectPublicKeyInfo) for the production TLS cert, base64 —
+            // see cert-pins.properties.example for how to compute them. A backup pin is required
+            // so the cert can be rotated without an app update becoming un-updatable. Both empty
+            // (the default without cert-pins.properties) disables pinning.
+            buildConfigField("String", "CERT_PIN_PRIMARY", "\"${certPin("primaryPin")}\"")
+            buildConfigField("String", "CERT_PIN_BACKUP", "\"${certPin("backupPin")}\"")
             if (hasReleaseKeystore) {
                 signingConfig = signingConfigs.getByName("release")
             }

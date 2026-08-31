@@ -1,0 +1,21 @@
+# Certificate pinning for the production backend — copy to `cert-pins.properties` (gitignored)
+# and fill in once the production host + TLS cert exist. Leaving this file absent (the default)
+# disables pinning entirely; RetrofitInstance only pins when both values are non-blank.
+#
+# Pin the certificate's SubjectPublicKeyInfo (SPKI), not the certificate itself — an SPKI pin
+# survives a cert renewal as long as the key pair is reused, and (unlike pinning the leaf cert)
+# is what OkHttp's CertificatePinner expects.
+#
+# Compute the primary pin for your production host:
+#   openssl s_client -connect api.your-domain.example:443 -servername api.your-domain.example </dev/null 2>/dev/null \
+#     | openssl x509 -pubkey -noout \
+#     | openssl pkey -pubin -outform der \
+#     | openssl dgst -sha256 -binary \
+#     | openssl base64
+#
+# ALWAYS configure a *second*, different pin (backupPin) for a certificate you are NOT currently
+# serving — e.g. the public key of the next cert/CA you'll rotate to, or a second CA in your
+# chain. Without a backup pin, rotating the production cert without shipping an app update first
+# would lock every installed app out of the API (a fully self-inflicted outage).
+primaryPin=sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+backupPin=sha256/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=
